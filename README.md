@@ -8,6 +8,7 @@ componentes de edição ligados a banco de dados e padronização visual.
 - `TDBLookupEdit`: lookup com código, descrição e pesquisa integrada.
 - `TCVCDBEdit`: `TDBEdit` com aparência consistente para campos desabilitados.
 - `TCVCDateEdit`: `TJvDateEdit` com o mesmo padrão visual de desabilitado.
+- `TCVCValidateEdit`: `TJvValidateEdit` com o mesmo padrão visual de desabilitado.
 - `TCpfCnpjDBEdit`: máscara e validação de CPF/CNPJ em campo ligado a dataset.
 
 ## Compatibilidade
