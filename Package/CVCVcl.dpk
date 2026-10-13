@@ -16,6 +16,7 @@ contains
   uLookupForm in '..\Source\uLookupForm.pas' {frmLookup},
   CVCDBEdit in '..\Source\CVCDBEdit.pas',
   CVCDateEdit in '..\Source\CVCDateEdit.pas',
+  CVCValidateEdit in '..\Source\CVCValidateEdit.pas',
   CpfCnpjDBEdit in '..\Source\CpfCnpjDBEdit.pas';
 
 end.
