@@ -8,7 +8,6 @@ uses
 type
   TCVCDateEdit = class(TJvDateEdit)
   private
-    FDisabledColor: TColor;
     FDisabledFontColor: TColor;
     FDisabledCtl3D: Boolean;
     FWasDisabled: Boolean;
@@ -20,7 +19,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
   published
-    property DisabledColor: TColor read FDisabledColor write FDisabledColor default clSilver;
+    property DisabledColor default clSilver;
     property DisabledFontColor: TColor read FDisabledFontColor write FDisabledFontColor default clWindowText;
     property DisabledCtl3D: Boolean read FDisabledCtl3D write FDisabledCtl3D default False;
   end;
@@ -30,7 +29,8 @@ implementation
 constructor TCVCDateEdit.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FDisabledColor := clSilver;
+  DisabledColor := clSilver;
+  DisabledTextColor := clWindowText;
   FDisabledFontColor := clWindowText;
   FDisabledCtl3D := False;
 end;
@@ -53,7 +53,8 @@ begin
       FWasDisabled := True;
     end;
 
-    Color := FDisabledColor;
+    Color := DisabledColor;
+    DisabledTextColor := FDisabledFontColor;
     Font.Color := FDisabledFontColor;
     Ctl3D := FDisabledCtl3D;
   end
