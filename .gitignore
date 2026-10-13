@@ -1,0 +1,16 @@
+*.dcu
+*.bpl
+*.dcp
+*.identcache
+*.local
+*.res
+*.exe
+*.map
+*.tvsconfig
+Package\*.dcu
+Package\*.bpl
+Package\*.dcp
+Win32\
+Win64\
+Debug\
+Release\

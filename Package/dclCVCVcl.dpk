@@ -1,0 +1,22 @@
+package dclCVCVcl;
+
+requires
+  rtl,
+  vcl,
+  vcldb,
+  FireDAC,
+  FireDACCommonDriver,
+  FireDACCommon,
+  vclimg,
+  JvCore,
+  JvStdCtrls;
+
+contains
+  DBLookupEdit in '..\Source\DBLookupEdit.pas',
+  uLookupForm in '..\Source\uLookupForm.pas' {frmLookup},
+  CVCDBEdit in '..\Source\CVCDBEdit.pas',
+  CVCDateEdit in '..\Source\CVCDateEdit.pas',
+  CpfCnpjDBEdit in '..\Source\CpfCnpjDBEdit.pas',
+  CVCCRegister in '..\Source\CVCCRegister.pas';
+
+end.
