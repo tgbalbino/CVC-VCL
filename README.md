@@ -31,5 +31,5 @@ Para remover o pacote:
 
 ## Licença
 
-A licença da suíte será definida antes da publicação pública, preservando os
-créditos e as condições originais dos componentes incorporados.
+Distribuído sob a licença MIT. Consulte o arquivo `LICENSE` para os termos
+completos. Os componentes incorporados preservam os créditos de seus autores.
