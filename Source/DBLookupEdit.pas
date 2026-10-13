@@ -175,7 +175,7 @@ uses
 
 procedure Register;
 begin
-  RegisterComponents('Samples', [TDBLookupEdit]);
+  RegisterComponents('CVC-VCL', [TDBLookupEdit]);
 end;
 
 { TDBLookupEdit }

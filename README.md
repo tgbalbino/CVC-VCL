@@ -23,6 +23,10 @@ testes de compilação.
 3. Reabra o Delphi.
 4. Procure os componentes na aba `CVC-VCL`.
 
+O instalador compila e instala separadamente o pacote runtime `CVCVcl` e o
+pacote de design-time `dclCVCVcl`. Assim, aplicações podem usar os componentes
+sem depender diretamente dos fontes da suíte.
+
 Para remover o pacote:
 
 ```powershell

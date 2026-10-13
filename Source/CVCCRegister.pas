@@ -7,12 +7,11 @@ procedure Register;
 implementation
 
 uses
-  System.Classes, CVCDBEdit, CVCDateEdit, CpfCnpjDBEdit, DBLookupEdit;
+  System.Classes, CVCDBEdit, CVCDateEdit, CpfCnpjDBEdit;
 
 procedure Register;
 begin
-  RegisterComponents('CVC-VCL', [TDBLookupEdit, TCVCDBEdit, TCVCDateEdit,
-    TCpfCnpjDBEdit]);
+  RegisterComponents('CVC-VCL', [TCVCDBEdit, TCVCDateEdit, TCpfCnpjDBEdit]);
 end;
 
 end.

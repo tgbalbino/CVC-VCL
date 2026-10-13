@@ -8,8 +8,12 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
-$packageSource = Join-Path $root 'Package\dclCVCVcl.dpk'
+$runtimeSource = Join-Path $root 'Package\CVCVcl.dpk'
+$designSource = Join-Path $root 'Package\dclCVCVcl.dpk'
+$runtimePackage = Join-Path $root 'Package\CVCVcl.bpl'
 $designPackage = Join-Path $root 'Package\dclCVCVcl.bpl'
+$publicBpl = Join-Path ${env:PUBLIC} "Documents\Embarcadero\Studio\$DelphiVersion\Bpl"
+$publicDcp = Join-Path ${env:PUBLIC} "Documents\Embarcadero\Studio\$DelphiVersion\Dcp"
 $knownPackagesKey = "HKCU:\Software\Embarcadero\BDS\$DelphiVersion\Known Packages"
 
 function Get-BdsBin {
@@ -67,29 +71,39 @@ if ($Uninstall) {
 }
 
 if (-not $SkipBuild) {
-  if (-not (Test-Path $packageSource)) {
-    throw "Fonte do pacote não encontrada: $packageSource"
+  if (-not (Test-Path $runtimeSource) -or -not (Test-Path $designSource)) {
+    throw 'Fontes dos pacotes CVC-VCL não encontradas.'
   }
 
   $dcc32 = Join-Path $bdsBin 'DCC32.EXE'
   $jvclLib = "C:\DelphiComponents\jvcl-master\jvcl\lib\D26\win32"
   $jclLib = "C:\DelphiComponents\jcl-master\jcl\lib\d26\win32"
-  Push-Location (Split-Path $packageSource)
+  Push-Location (Split-Path $runtimeSource)
   try {
-    & $dcc32 "-U$jvclLib;$jclLib" (Split-Path $packageSource -Leaf)
+    & $dcc32 "-U$jvclLib;$jclLib" (Split-Path $runtimeSource -Leaf)
+    if ($LASTEXITCODE -ne 0) {
+      throw 'Falha ao compilar o pacote runtime CVC-VCL.'
+    }
+    & $dcc32 "-U$jvclLib;$jclLib;." (Split-Path $designSource -Leaf)
   }
   finally {
     Pop-Location
   }
   if ($LASTEXITCODE -ne 0) {
-    throw 'Falha ao compilar o pacote CVC-VCL.'
+    throw 'Falha ao compilar o pacote de design-time CVC-VCL.'
   }
 }
 
-if (-not (Test-Path $designPackage)) {
-  throw "BPL de design-time não encontrado: $designPackage"
+if (-not (Test-Path $runtimePackage) -or -not (Test-Path $designPackage)) {
+  throw 'BPLs CVC-VCL não encontrados.'
 }
 
+New-Item -ItemType Directory -Path $publicBpl, $publicDcp -Force | Out-Null
+Copy-Item (Join-Path $root 'Package\CVCVcl.bpl') (Join-Path $publicBpl 'CVCVcl.bpl') -Force
+Copy-Item (Join-Path $root 'Package\dclCVCVcl.bpl') (Join-Path $publicBpl 'dclCVCVcl.bpl') -Force
+Copy-Item (Join-Path $root 'Package\CVCVcl.dcp') (Join-Path $publicDcp 'CVCVcl.dcp') -Force
+Copy-Item (Join-Path $root 'Package\dclCVCVcl.dcp') (Join-Path $publicDcp 'dclCVCVcl.dcp') -Force
+$designPackage = Join-Path $publicBpl 'dclCVCVcl.bpl'
 Set-KnownPackage
 Write-Host "CVC-VCL instalado no Delphi $DelphiVersion."
 Write-Host 'Reabra o Delphi para carregar os tres componentes.'
