@@ -70,13 +70,14 @@ function Remove-KnownPackage {
 }
 
 Test-DelphiClosed
-$bdsBin = Get-BdsBin
 
 if ($Uninstall) {
   Remove-KnownPackage
   Write-Host 'CVC-VCL removido da lista de pacotes do Delphi.'
   exit 0
 }
+
+$bdsBin = Get-BdsBin
 
 if (-not $SkipBuild) {
   if (-not (Test-Path $runtimeSource) -or -not (Test-Path $designSource) -or
