@@ -10,6 +10,10 @@ componentes de edição ligados a banco de dados e padronização visual.
 - `TCVCDateEdit`: `TJvDateEdit` com o mesmo padrão visual de desabilitado.
 - `TCVCValidateEdit`: `TJvValidateEdit` com o mesmo padrão visual de desabilitado.
 - `TCpfCnpjDBEdit`: máscara e validação de CPF/CNPJ em campo ligado a dataset.
+- `TCustomBtn`: botão customizado com texto e imagem PNG opcional.
+- `TDBValueComboBox`: combo ligado a dataset com valores persistidos separados.
+- `TDBPersonComboBox`: combo ligado a dataset para textos e valores de pessoas.
+- `TDateBox`: grupo de período com filtros de data e geração de SQL.
 
 ## Compatibilidade
 
@@ -24,9 +28,10 @@ testes de compilação.
 3. Reabra o Delphi.
 4. Procure os componentes na aba `CVC-VCL`.
 
-O instalador compila e instala separadamente o pacote runtime `CVCVcl` e o
-pacote de design-time `dclCVCVcl`. Assim, aplicações podem usar os componentes
-sem depender diretamente dos fontes da suíte.
+O instalador compila e instala os pacotes runtime `CVCVcl` e `CVCExtras`, além
+dos pacotes de design-time correspondentes. O `EditDialogFireDAC` permanece
+organizado em sua pasta própria por possuir dependências e units de design-time
+específicas; ele não é misturado ao pacote base automaticamente.
 
 Para remover o pacote:
 

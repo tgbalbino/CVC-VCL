@@ -1,0 +1,18 @@
+package CVCExtras;
+
+requires
+  rtl,
+  vcl,
+  vcldb,
+  CVCVcl,
+  JvCore,
+  JvStdCtrls,
+  JvCustom;
+
+contains
+  CustomBtn in '..\Source\CustomBtn\CustomBtn.pas',
+  DBValueComboBox in '..\Source\DbCombo\DBValueComboBox.pas',
+  DBPersonComboBox in '..\Source\PersonDbComboBox\DBPersonComboBox.pas',
+  DateBox in '..\Source\TTBDateBox\DateBox.pas';
+
+end.

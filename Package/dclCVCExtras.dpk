@@ -1,0 +1,14 @@
+package dclCVCExtras;
+
+{$DESCRIPTION 'CVC-VCL - componentes pessoais'}
+
+requires
+  rtl,
+  vcl,
+  vcldb,
+  CVCExtras;
+
+contains
+  CVCExtrasRegister in 'CVCExtrasRegister.pas';
+
+end.
