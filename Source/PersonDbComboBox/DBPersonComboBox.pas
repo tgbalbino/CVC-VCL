@@ -129,7 +129,8 @@ end;
 
 procedure TDBPersonComboBox.UpdateData(Sender: TObject);
 begin
-  if ItemIndex >= 0 then
+  if (ItemIndex >= 0) and (ItemIndex < FValues.Count) and
+     Assigned(FDataLink.Field) then
     FDataLink.Field.AsString := FValues[ItemIndex];
 end;
 

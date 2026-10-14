@@ -102,6 +102,7 @@ end;
 
 function TDateBox.GetDateIntervalSql: String;
 begin
+  Result := '';
   if (FDateField <> '') and (not CbIgnore.Checked) then
     Result := FDateField  + ' between ' + GetDateFormated(EdDateStart) + ' and ' +
                                           GetDateFormated(EdDateEnd);
@@ -114,12 +115,14 @@ end;
 
 function TDateBox.GetDateEndSql: String;
 begin
+  Result := '';
   if FDateField <> '' then
   Result := FDateField  + ' = ' + GetDateFormated(EdDateEnd);
 end;
 
 function TDateBox.GetDateStarSql: String;
 begin
+  Result := '';
   if FDateField <> '' then
   Result := FDateField  + ' = ' + GetDateFormated(EdDateStart);
 end;
