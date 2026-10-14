@@ -26,6 +26,7 @@ type
     procedure LoadPngFromFile(const FileName: string);
   published
     property Caption: string read FCaption write SetCaption;
+    property Png: TPngImage read FPng write SetPng;
     property Align;
     property Anchors;
     property Color;
