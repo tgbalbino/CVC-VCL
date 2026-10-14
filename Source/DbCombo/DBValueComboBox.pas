@@ -98,7 +98,7 @@ end;
 
 procedure TDBValueComboBox.UpdateData(Sender: TObject);
 begin
-  if Assigned(FDataLink.Field) and
+  if FDataLink.Active and Assigned(FDataLink.Field) and
      (ItemIndex >= 0) and (ItemIndex < FValues.Count) then
     FDataLink.Field.AsString := FValues[ItemIndex];
 end;
@@ -133,6 +133,7 @@ end;
 procedure TDBValueComboBox.SetValues(const Value: TStringList);
 begin
   FValues.Assign(Value);
+  DataChange(Self);
 end;
 
 end.

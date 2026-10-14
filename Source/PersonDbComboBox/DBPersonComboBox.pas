@@ -129,7 +129,7 @@ end;
 
 procedure TDBPersonComboBox.UpdateData(Sender: TObject);
 begin
-  if (ItemIndex >= 0) and (ItemIndex < FValues.Count) and
+  if FDataLink.Active and (ItemIndex >= 0) and (ItemIndex < FValues.Count) and
      Assigned(FDataLink.Field) then
     FDataLink.Field.AsString := FValues[ItemIndex];
 end;
@@ -143,6 +143,7 @@ end;
 procedure TDBPersonComboBox.SetValues(const Value: TStringList);
 begin
   FValues.Assign(Value);
+  UpdateDisplayText;
 end;
 
 function TDBPersonComboBox.GetSelectedValue: string;
