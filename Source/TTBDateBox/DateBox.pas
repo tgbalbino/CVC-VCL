@@ -3,10 +3,22 @@
 interface
 
 uses
-  System.SysUtils, System.Classes, Vcl.Controls, Vcl.StdCtrls, JvToolEdit, JvTypes;
+  Winapi.Messages, System.SysUtils, System.Classes, Vcl.Controls, Vcl.Graphics,
+  Vcl.StdCtrls, Vcl.Forms, JvToolEdit, JvTypes;
 
 type
   TGdb = (Firebird, MSSQL, Oracle);
+
+  TDateBoxEdit = class(TJvDateEdit)
+  private
+    FWasDisabled: Boolean;
+    FColorBeforeDisable: TColor;
+    FFontColorBeforeDisable: TColor;
+    FCtl3DBeforeDisable: Boolean;
+    procedure CMEnabledChanged(var Message: TMessage); message CM_ENABLEDCHANGED;
+    procedure ApplyEnabledAppearance;
+  end;
+
   TDateBox = class(TGroupBox)
   private
     FDateField: String;
@@ -14,11 +26,13 @@ type
     FQuotedDate: boolean;
     Label1: TLabel;
     Label2: TLabel;
-    EdDateStart: TJvDateEdit;
-    EdDateEnd: TJvDateEdit;
+    EdDateStart: TDateBoxEdit;
+    EdDateEnd: TDateBoxEdit;
     CbIgnore: TCheckBox;
+    BtnToday: TButton;
 
     procedure CbIgnoreClick(Sender: TObject);
+    procedure BtnTodayClick(Sender: TObject);
     { Private declarations }
   protected
     function GetDateFormated(EdData: TJvDateEdit ): String;
@@ -50,12 +64,51 @@ end;
 
 { TDateBox }
 
+procedure TDateBoxEdit.CMEnabledChanged(var Message: TMessage);
+begin
+  inherited;
+  ApplyEnabledAppearance;
+end;
+
+procedure TDateBoxEdit.ApplyEnabledAppearance;
+begin
+  if not Enabled then
+  begin
+    if not FWasDisabled then
+    begin
+      FColorBeforeDisable := Color;
+      FFontColorBeforeDisable := Font.Color;
+      FCtl3DBeforeDisable := Ctl3D;
+      FWasDisabled := True;
+    end;
+
+    Color := clSilver;
+    Font.Color := clWindowText;
+    Ctl3D := False;
+    BorderStyle := bsSingle;
+  end
+  else if FWasDisabled then
+  begin
+    Color := FColorBeforeDisable;
+    Font.Color := FFontColorBeforeDisable;
+    Ctl3D := FCtl3DBeforeDisable;
+    FWasDisabled := False;
+  end;
+end;
+
 procedure TDateBox.CbIgnoreClick(Sender: TObject);
 begin
   EdDateStart.Enabled := not CbIgnore.Checked;
   EdDateEnd.Enabled   := not CbIgnore.Checked;
   Label1.Enabled   := not CbIgnore.Checked;
   Label2.Enabled   := not CbIgnore.Checked;
+  BtnToday.Enabled := not CbIgnore.Checked;
+end;
+
+procedure TDateBox.BtnTodayClick(Sender: TObject);
+begin
+  EdDateStart.Date := Date;
+  EdDateEnd.Date := Date;
 end;
 
 constructor TDateBox.Create(AOwner: TComponent);
@@ -70,7 +123,7 @@ begin
   Label1.Caption := 'Período: ';
   Label1.Left := 5;
 
-  EdDateStart        := TJvDateEdit.Create(Self);
+  EdDateStart        := TDateBoxEdit.Create(Self);
   EdDateStart.Top    := EdDateStart.Height - 4;
   EdDateStart.Left   := Label1.Left + Label1.Width + 3;
   EdDateStart.Parent := Self;
@@ -79,7 +132,7 @@ begin
 
   Label1.Top  := EdDateStart.Top + 4;
 
-  EdDateEnd   := TJvDateEdit.Create(Self);
+  EdDateEnd   := TDateBoxEdit.Create(Self);
   EdDateEnd.Parent := Self;
   EdDateEnd.Top  := EdDateStart.Top;
   EdDateEnd.StartOfWeek := Sun;
@@ -91,6 +144,16 @@ begin
 
   EdDateEnd.Left := EdDateStart.Left + EdDateStart.Width + 15;
 
+  BtnToday := TButton.Create(Self);
+  BtnToday.Parent := Self;
+  BtnToday.Caption := 'Hoje';
+  BtnToday.Width := 48;
+  BtnToday.Top := EdDateStart.Top - 1;
+  BtnToday.Left := EdDateEnd.Left + EdDateEnd.Width + 5;
+  BtnToday.OnClick := BtnTodayClick;
+  if Width < BtnToday.Left + BtnToday.Width + 5 then
+    Width := BtnToday.Left + BtnToday.Width + 5;
+
   CbIgnore := TCheckBox.Create(Self);
   CbIgnore.Parent  := Self;
   CbIgnore.Align   := alBottom;
@@ -99,6 +162,7 @@ begin
   CbIgnore.AlignWithMargins := True;
   CbIgnore.Checked := True;
   CbIgnore.OnClick := CbIgnoreClick;
+  CbIgnoreClick(CbIgnore);
 end;
 
 function TDateBox.GetDateIntervalSql: String;
