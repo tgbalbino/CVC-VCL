@@ -8,8 +8,7 @@ uses
   StdCtrls, Grids, DBGrids, Db, ExtCtrls, ActnList, ComCtrls,  Registry, Menus,
   uEstSearchDialogTypes, uEstSearchDialogConst, uEstSearchDialogDateUtils,
   uEstSearchDialogProperties, uEstSearchDialogIntl, uEstSearchDialogFunction,
-  fEstSearchDialogPresetCustomize, Buttons,
-  WideStrings, pngimage, System.Actions;
+  fEstSearchDialogPresetCustomize, Buttons, System.Actions;
 
 type
   TFrmEstSearchDialog = class(TForm)

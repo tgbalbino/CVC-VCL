@@ -10,7 +10,7 @@ unit fEstSearchDialogBaseEditor;
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   Dialogs, Registry;
 
 type

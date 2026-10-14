@@ -3,7 +3,7 @@
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   Dialogs, Grids, DBGrids, DB, StdCtrls, ExtCtrls, fEstSearchDialogBaseEditor;
 
 type

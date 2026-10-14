@@ -9,7 +9,7 @@ unit fEstSearchDialogEditorZeos;
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   Dialogs, IDBEdit, uEstSearchDialogZeos, fEstSearchDialogEditor,
   ActnList, StdCtrls, ExtCtrls,
   Buttons,

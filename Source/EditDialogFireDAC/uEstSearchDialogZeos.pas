@@ -10,7 +10,6 @@ interface
 
 uses
   Classes, IDBEdit, uEstSearchDialog,
-  WideStrings,
   Data.DB, FireDAC.Comp.Client;
 
 type

@@ -9,7 +9,7 @@ unit fEstSearchDialogDsgn;
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   Dialogs, fEstSearchDialog, ActnList, DB, ComCtrls, Grids, DBGrids,
   StdCtrls, ExtCtrls, Menus, fEstSearchDialogEditor, uEstSearchDialog, Buttons;
 
