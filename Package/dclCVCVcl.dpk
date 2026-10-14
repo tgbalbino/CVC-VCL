@@ -1,5 +1,7 @@
 package dclCVCVcl;
 
+{$DESCRIPTION 'CVC-VCL - componentes do ERP'}
+
 requires
   rtl,
   vcl,
