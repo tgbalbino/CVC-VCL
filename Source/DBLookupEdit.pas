@@ -217,11 +217,10 @@ begin
   FIDEdit := TEdit.Create(Self);
   FIDEdit.Parent := Self;
   FIDEdit.AutoSize := False;      // permite fixar a altura manualmente
-  //FIDEdit.Enabled := False;
-  FIDEdit.ReadOnly := True;
-  FIDEdit.Enabled := True;        // mantém fonte preta
+  FIDEdit.ReadOnly := True;       // o código é preenchido pela seleção
+  FIDEdit.Enabled := True;        // o código permanece visualmente habilitado
   FIDEdit.TabStop := False;       // não entra no TAB
-  FIDEdit.Color := clBtnFace;     // aparência de desabilitado
+  FIDEdit.Color := clWindow;      // aparência de campo habilitado
   FIDEdit.Ctl3D := False;
   FIDEdit.ParentCtl3D := False;
   FIDEdit.Cursor := crArrow;      // não parece editável
@@ -737,23 +736,22 @@ begin
      not Assigned(FSearchButton) then
     Exit;
 
-  FIDEdit.Enabled := Enabled;
+  // O código é somente informativo: permanece sempre desabilitado e somente
+  // leitura, independentemente do estado da descrição.
+  FIDEdit.Enabled := False;
   FDescEdit.Enabled := Enabled;
   FSearchButton.Enabled := Enabled;
 
-  if Enabled then
+  AColor := clWindow;
+  AFontColor := Font.Color;
+  if not Enabled then
   begin
-    AColor := clWindow;
-    AFontColor := Font.Color;
-  end
-  else
-  begin
-    // Mantém o mesmo padrão do TDBEdit desabilitado usado nas telas do ERP.
     AColor := clSilver;
     AFontColor := clWindowText;
   end;
 
-  FIDEdit.Color := AColor;
+  // O campo de código permanece sempre com a aparência de desabilitado.
+  FIDEdit.Color := clSilver;
   FDescEdit.Color := AColor;
   FIDEdit.Font.Assign(Font);
   FDescEdit.Font.Assign(Font);

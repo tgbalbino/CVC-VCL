@@ -9,14 +9,12 @@ requires
   FireDACCommon,
   vclimg,
   JvCore,
-  JvStdCtrls;
+  JvStdCtrls,
+  JvCustom;
 
 contains
-  DBLookupEdit in '..\Source\DBLookupEdit.pas',
-  uLookupForm in '..\Source\uLookupForm.pas' {frmLookup},
   CVCDBEdit in '..\Source\CVCDBEdit.pas',
   CVCDateEdit in '..\Source\CVCDateEdit.pas',
-  CVCValidateEdit in '..\Source\CVCValidateEdit.pas',
-  CpfCnpjDBEdit in '..\Source\CpfCnpjDBEdit.pas';
+  CVCValidateEdit in '..\Source\CVCValidateEdit.pas';
 
 end.
