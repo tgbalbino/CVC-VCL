@@ -69,10 +69,28 @@ function Remove-KnownPackage {
   }
 }
 
+function Remove-InstalledPackages {
+  $files = @(
+    (Join-Path $publicBpl 'CVCVcl.bpl'),
+    (Join-Path $publicBpl 'dclCVCVcl.bpl'),
+    (Join-Path $publicBpl 'CVCExtras.bpl'),
+    (Join-Path $publicBpl 'dclCVCExtras.bpl'),
+    (Join-Path $publicDcp 'CVCVcl.dcp'),
+    (Join-Path $publicDcp 'dclCVCVcl.dcp'),
+    (Join-Path $publicDcp 'CVCExtras.dcp'),
+    (Join-Path $publicDcp 'dclCVCExtras.dcp')
+  )
+
+  foreach ($file in $files) {
+    Remove-Item -LiteralPath $file -Force -ErrorAction SilentlyContinue
+  }
+}
+
 Test-DelphiClosed
 
 if ($Uninstall) {
   Remove-KnownPackage
+  Remove-InstalledPackages
   Write-Host 'CVC-VCL removido da lista de pacotes do Delphi.'
   exit 0
 }
