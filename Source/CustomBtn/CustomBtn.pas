@@ -64,7 +64,7 @@ end;
 
 procedure TCustomBtn.Click;
 begin
-  if Assigned(FOnClick) then
+  if Enabled and Assigned(FOnClick) then
     FOnClick(Self);
 end;
 
@@ -101,6 +101,8 @@ begin
 
   // Texto
   Canvas.Font := Font;
+  if not Enabled then
+    Canvas.Font.Color := clGrayText;
   R := Rect(5 + FPng.Width + 5, 0, Width - 5, Height);
   DrawText(Canvas.Handle, PChar(FCaption), -1, R, DT_VCENTER or DT_SINGLELINE or DT_LEFT);
 end;
