@@ -26,6 +26,7 @@ type
   public
     function GetDateIntervalSql: String;
     function GetDateStarSql: String;
+    function GetDateStartSql: String;
     function GetDateEndSql: String;
     function GetDateStart: String;
     function GetDateEnd: String;
@@ -121,6 +122,11 @@ begin
 end;
 
 function TDateBox.GetDateStarSql: String;
+begin
+  Result := GetDateStartSql;
+end;
+
+function TDateBox.GetDateStartSql: String;
 begin
   Result := '';
   if FDateField <> '' then
