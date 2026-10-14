@@ -2,7 +2,9 @@
 param(
   [switch]$Uninstall,
   [switch]$SkipBuild,
-  [string]$DelphiVersion = '20.0'
+  [string]$DelphiVersion = '20.0',
+  [string]$JvclLib = 'C:\DelphiComponents\jvcl-master\jvcl\lib\D26\win32',
+  [string]$JclLib = 'C:\DelphiComponents\jcl-master\jcl\lib\d26\win32'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -83,8 +85,12 @@ if (-not $SkipBuild) {
   }
 
   $dcc32 = Join-Path $bdsBin 'DCC32.EXE'
-  $jvclLib = "C:\DelphiComponents\jvcl-master\jvcl\lib\D26\win32"
-  $jclLib = "C:\DelphiComponents\jcl-master\jcl\lib\d26\win32"
+  if (-not (Test-Path $JvclLib)) {
+    throw "Biblioteca JVCL não encontrada: $JvclLib"
+  }
+  if (-not (Test-Path $JclLib)) {
+    throw "Biblioteca JCL não encontrada: $JclLib"
+  }
   $sourcePaths = @(
     (Join-Path $root 'Source'),
     (Join-Path $root 'Source\CustomBtn'),
@@ -93,8 +99,8 @@ if (-not $SkipBuild) {
     (Join-Path $root 'Source\PersonDbComboBox'),
     (Join-Path $root 'Source\TTBDateBox'),
     (Join-Path $root 'Package'),
-    $jvclLib,
-    $jclLib
+    $JvclLib,
+    $JclLib
   ) -join ';'
   Push-Location (Split-Path $runtimeSource)
   try {
