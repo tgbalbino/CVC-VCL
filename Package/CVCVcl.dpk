@@ -13,8 +13,11 @@ requires
   JvCustom;
 
 contains
-  CVCDBEdit in '..\Source\CVCDBEdit.pas',
-  CVCDateEdit in '..\Source\CVCDateEdit.pas',
-  CVCValidateEdit in '..\Source\CVCValidateEdit.pas';
+  CVCDBEdit in '..\Source\CVCDBEdit\CVCDBEdit.pas',
+  CVCDateEdit in '..\Source\CVCDateEdit\CVCDateEdit.pas',
+  CVCValidateEdit in '..\Source\CVCValidateEdit\CVCValidateEdit.pas',
+  CpfCnpjDBEdit in '..\Source\CpfCnpjDBEdit\CpfCnpjDBEdit.pas',
+  DBLookupEdit in '..\Source\DBLookupEdit\DBLookupEdit.pas',
+  uLookupForm in '..\Source\DBLookupEdit\uLookupForm.pas' {frmLookup};
 
 end.
