@@ -3,7 +3,8 @@ unit CVCValidateEdit;
 interface
 
 uses
-  Winapi.Messages, System.Classes, Vcl.Controls, Vcl.Graphics, JvValidateEdit;
+  Winapi.Messages, System.Classes, Vcl.Controls, Vcl.Graphics, Vcl.Forms,
+  JvValidateEdit;
 
 type
   TCVCValidateEdit = class(TJvValidateEdit)
@@ -14,7 +15,9 @@ type
     FColorBeforeDisable: TColor;
     FFontColorBeforeDisable: TColor;
     FCtl3DBeforeDisable: Boolean;
+    procedure SetEnabled(Value: Boolean); override;
     procedure CMEnabledChanged(var Message: TMessage); message CM_ENABLEDCHANGED;
+    procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
     procedure ApplyEnabledAppearance;
   public
     constructor Create(AOwner: TComponent); override;
@@ -29,6 +32,14 @@ implementation
 constructor TCVCValidateEdit.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  ParentColor := False;
+  StyleElements := [];
+  Color := clWindow;
+  Flat := False;
+  ParentFlat := False;
+  BorderStyle := bsSingle;
+  ParentCtl3D := False;
+  Ctl3D := False;
   DisabledColor := clSilver;
   FDisabledFontColor := clWindowText;
   FDisabledCtl3D := False;
@@ -40,8 +51,39 @@ begin
   ApplyEnabledAppearance;
 end;
 
+procedure TCVCValidateEdit.SetEnabled(Value: Boolean);
+begin
+  inherited;
+  ApplyEnabledAppearance;
+end;
+
+procedure TCVCValidateEdit.WMPaint(var Message: TWMPaint);
+var
+  Canvas: TControlCanvas;
+begin
+  inherited;
+
+  if BorderStyle = bsSingle then
+  begin
+    Canvas := TControlCanvas.Create;
+    try
+      Canvas.Control := Self;
+      Canvas.Brush.Style := bsSolid;
+      Canvas.Brush.Color := clBlack;
+      Canvas.FrameRect(ClientRect);
+    finally
+      Canvas.Free;
+    end;
+  end;
+end;
+
 procedure TCVCValidateEdit.ApplyEnabledAppearance;
 begin
+  Flat := False;
+  ParentFlat := False;
+  BorderStyle := bsSingle;
+  ParentCtl3D := False;
+
   if not Enabled then
   begin
     if not FWasDisabled then
@@ -63,6 +105,8 @@ begin
     Ctl3D := FCtl3DBeforeDisable;
     FWasDisabled := False;
   end;
+
+  Ctl3D := False;
 end;
 
 end.

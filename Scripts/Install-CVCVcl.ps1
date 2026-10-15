@@ -20,7 +20,24 @@ $extrasRuntimePackage = Join-Path $root 'Package\CVCExtras.bpl'
 $extrasDesignPackage = Join-Path $root 'Package\dclCVCExtras.bpl'
 $publicBpl = Join-Path ${env:PUBLIC} "Documents\Embarcadero\Studio\$DelphiVersion\Bpl"
 $publicDcp = Join-Path ${env:PUBLIC} "Documents\Embarcadero\Studio\$DelphiVersion\Dcp"
+$publicHpp = Join-Path ${env:PUBLIC} "Documents\Embarcadero\Studio\$DelphiVersion\hpp\Win32"
+$publicLib = Join-Path ${env:PUBLIC} "Documents\Embarcadero\Studio\$DelphiVersion\lib\Win32"
 $knownPackagesKey = "HKCU:\Software\Embarcadero\BDS\$DelphiVersion\Known Packages"
+$disabledPackagesKey = "HKCU:\Software\Embarcadero\BDS\$DelphiVersion\Disabled Packages"
+$envOptionsPath = Join-Path ${env:APPDATA} "Embarcadero\BDS\$DelphiVersion\EnvOptions.proj"
+$cvcSourcePaths = @(
+  (Join-Path $root 'Source'),
+  (Join-Path $root 'Source\CVCDBEdit'),
+  (Join-Path $root 'Source\CVCDateEdit'),
+  (Join-Path $root 'Source\CVCValidateEdit'),
+  (Join-Path $root 'Source\CpfCnpjDBEdit'),
+  (Join-Path $root 'Source\DBLookupEdit'),
+  (Join-Path $root 'Source\CustomBtn'),
+  (Join-Path $root 'Source\DbCombo'),
+  (Join-Path $root 'Source\EditDialogFireDAC'),
+  (Join-Path $root 'Source\DBPersonComboBox'),
+  (Join-Path $root 'Source\DateBox')
+) -join ';'
 
 function Get-BdsBin {
   $candidates = @(
@@ -33,7 +50,9 @@ function Get-BdsBin {
     throw "Não foi possível localizar o Delphi na versão $DelphiVersion."
   }
 
-  return $candidates[0]
+  # Em PowerShell 7 uma string escalar indexada por [0] retorna o primeiro
+  # caractere ("C"), e não o primeiro item do conjunto de candidatos.
+  return @($candidates)[0]
 }
 
 function Test-DelphiClosed {
@@ -42,10 +61,115 @@ function Test-DelphiClosed {
   }
 }
 
+function Update-DelphiLibraryPath {
+  if (-not (Test-Path -LiteralPath $envOptionsPath)) {
+    return
+  }
+
+  $bytes = [IO.File]::ReadAllBytes($envOptionsPath)
+  $hasBom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and
+    $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
+  $encoding = [Text.UTF8Encoding]::new($hasBom)
+  $content = if ($hasBom) {
+    $encoding.GetString($bytes, 3, $bytes.Length - 3)
+  } else {
+    [Text.Encoding]::UTF8.GetString($bytes)
+  }
+
+  foreach ($legacyPath in @(
+    'C:\DelphiComponents\TTBDateBox',
+    'C:\DelphiComponents\Person\PesonDbCombobox',
+    'C:\DelphiComponents\DBLookupEditComponent\Source',
+    'C:\DelphiComponents\CustomBtn',
+    'C:\DelphiComponents\DbCombo'
+  )) {
+    $content = $content.Replace("$legacyPath;", '').Replace($legacyPath, '')
+  }
+
+  $content = [regex]::Replace($content, '(?s)(<DelphiLibraryPath>)(.*?)(</DelphiLibraryPath>)', {
+    param($match)
+    $paths = $match.Groups[2].Value
+    if ($paths -notmatch [regex]::Escape((Join-Path $root 'Source'))) {
+      $paths = "$cvcSourcePaths;$paths"
+    }
+    "$($match.Groups[1].Value)$paths$($match.Groups[3].Value)"
+  })
+
+  [IO.File]::WriteAllText($envOptionsPath, $content, [Text.UTF8Encoding]::new($true))
+}
+
 function Set-KnownPackage {
   if (-not (Test-Path $knownPackagesKey)) {
     New-Item -Path $knownPackagesKey -Force | Out-Null
   }
+
+  # TTBDateBox foi substituido pelo componente DateBox do CVC-VCL.
+  # Limpa referencias do pacote antigo para o Delphi nao tentar carrega-lo
+  # ao abrir um projeto ou reconstruir a paleta de componentes.
+  $legacyPackageNames = @(
+    'DateBox.bpl',
+    'dclDateBox.bpl',
+    'TTBDateBox.bpl',
+    'dclTTBDateBox.bpl',
+    'PK_PERSONDBCOMBOBOX.bpl',
+    'dclPK_PERSONDBCOMBOBOX.bpl',
+    'CpfCnpjDBEdit.bpl',
+    'dclCpfCnpjDBEdit.bpl',
+    'CustomBTN.bpl',
+    'dclCustomBTN.bpl',
+    'VclValueCombobox.bpl',
+    'dclVclValueCombobox.bpl',
+    'DBLookupEdit.bpl',
+    'dclDBLookupEdit.bpl'
+  )
+  $knownProperties = Get-ItemProperty $knownPackagesKey | ForEach-Object {
+    $_.PSObject.Properties | Where-Object {
+      $legacyPackageNames -contains [IO.Path]::GetFileName($_.Name)
+    }
+  }
+  foreach ($legacyPackage in $knownProperties) {
+    Remove-ItemProperty -Path $knownPackagesKey -Name $legacyPackage.Name -ErrorAction SilentlyContinue
+  }
+
+  # O Delphi também mantém uma lista separada dos pacotes que falharam ao
+  # carregar. Se ela conservar um BPL antigo, a IDE tenta carregá-lo de novo
+  # na próxima inicialização, mesmo que Known Packages esteja correto.
+  if (Test-Path $disabledPackagesKey) {
+    $disabledProperties = Get-ItemProperty $disabledPackagesKey | ForEach-Object {
+      $_.PSObject.Properties | Where-Object {
+        $legacyPackageNames -contains [IO.Path]::GetFileName($_.Name)
+      }
+    }
+    foreach ($disabledPackage in $disabledProperties) {
+      Remove-ItemProperty -Path $disabledPackagesKey -Name $disabledPackage.Name -ErrorAction SilentlyContinue
+    }
+  }
+
+  $packageCacheKey = "HKCU:\Software\Embarcadero\BDS\$DelphiVersion\Package Cache"
+  foreach ($legacyPackageName in $legacyPackageNames) {
+    Remove-Item -LiteralPath (Join-Path $packageCacheKey $legacyPackageName) -Recurse -Force -ErrorAction SilentlyContinue
+  }
+
+  # O cache também precisa apontar para os BPLs públicos; caso contrário o
+  # Delphi pode reintroduzir a cópia do repositório na próxima inicialização.
+  $extrasCacheKey = Join-Path $packageCacheKey 'dclCVCExtras.bpl'
+  if (Test-Path $extrasCacheKey) {
+    $packageGroup = [string](Get-ItemProperty $extrasCacheKey).'Package Group'
+    $packageGroup = $packageGroup -replace [regex]::Escape((Join-Path $root 'Package\dclCVCExtras.bpl')), (Join-Path $publicBpl 'dclCVCExtras.bpl')
+    Set-ItemProperty -Path $extrasCacheKey -Name 'Package Group' -Value $packageGroup
+  }
+
+  $paletteCacheKey = "HKCU:\Software\Embarcadero\BDS\$DelphiVersion\Palette\Cache"
+  foreach ($legacyPackageName in $legacyPackageNames) {
+    Remove-Item -LiteralPath (Join-Path $paletteCacheKey $legacyPackageName) -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath (Join-Path $paletteCacheKey $legacyPackageName.ToLowerInvariant()) -Recurse -Force -ErrorAction SilentlyContinue
+  }
+
+  # CVCVcl.bpl e pacote de runtime; seus componentes nao podem ficar
+  # registrados tambem no cache do pacote de design.
+  Remove-Item -LiteralPath (Join-Path $packageCacheKey 'CVCVcl.bpl\Components') -Recurse -Force -ErrorAction SilentlyContinue
+  Remove-Item -LiteralPath (Join-Path $paletteCacheKey 'CVCVcl.bpl') -Recurse -Force -ErrorAction SilentlyContinue
+  Remove-Item -LiteralPath (Join-Path $paletteCacheKey 'cvcvcl.bpl') -Recurse -Force -ErrorAction SilentlyContinue
 
   # O pacote unificado passa a fornecer também o TDBLookupEdit.
   # Remove somente o registro antigo do mesmo componente para evitar carga duplicada.
@@ -56,6 +180,19 @@ function Set-KnownPackage {
   }
   foreach ($oldPackage in $oldPackages) {
     Remove-ItemProperty -Path $knownPackagesKey -Name $oldPackage.Name -ErrorAction SilentlyContinue
+  }
+
+  # Mantém somente uma entrada para cada pacote de design-time. Durante as
+  # instalações anteriores o mesmo dclCVCExtras.bpl podia ficar registrado
+  # tanto na pasta do repositório quanto na pasta pública do Delphi.
+  $currentDesignPackageNames = @('dclCVCVcl.bpl', 'dclCVCExtras.bpl')
+  $duplicateDesignPackages = Get-ItemProperty $knownPackagesKey | ForEach-Object {
+    $_.PSObject.Properties | Where-Object {
+      $currentDesignPackageNames -contains [IO.Path]::GetFileName($_.Name)
+    }
+  }
+  foreach ($duplicateDesignPackage in $duplicateDesignPackages) {
+    Remove-ItemProperty -Path $knownPackagesKey -Name $duplicateDesignPackage.Name -ErrorAction SilentlyContinue
   }
 
   New-ItemProperty -Path $knownPackagesKey -Name $designPackage -Value 'CVC-VCL - componentes do ERP' -PropertyType String -Force | Out-Null
@@ -70,6 +207,14 @@ function Remove-KnownPackage {
 }
 
 function Remove-InstalledPackages {
+  $legacyArtifactNames = @('DateBox', 'TTBDateBox', 'PK_PERSONDBCOMBOBOX', 'CpfCnpjDBEdit', 'CustomBTN', 'VclValueCombobox', 'DBLookupEdit')
+  foreach ($directory in @($publicDcp, $publicHpp, $publicLib)) {
+    foreach ($legacyArtifactName in $legacyArtifactNames) {
+      Get-ChildItem -LiteralPath $directory -File -Filter "$legacyArtifactName*" -ErrorAction SilentlyContinue |
+        Remove-Item -Force -ErrorAction SilentlyContinue
+    }
+  }
+
   $files = @(
     (Join-Path $publicBpl 'CVCVcl.bpl'),
     (Join-Path $publicBpl 'dclCVCVcl.bpl'),
@@ -115,8 +260,7 @@ if (-not $SkipBuild) {
     (Join-Path $root 'Source\CustomBtn'),
     (Join-Path $root 'Source\DbCombo'),
     (Join-Path $root 'Source\EditDialogFireDAC'),
-    (Join-Path $root 'Source\PersonDbComboBox'),
-    (Join-Path $root 'Source\TTBDateBox'),
+    (Join-Path $root 'Source\DBPersonComboBox'),
     (Join-Path $root 'Package'),
     $JvclLib,
     $JclLib
@@ -160,6 +304,8 @@ Copy-Item (Join-Path $root 'Package\dclCVCVcl.dcp') (Join-Path $publicDcp 'dclCV
 Copy-Item (Join-Path $root 'Package\CVCExtras.dcp') (Join-Path $publicDcp 'CVCExtras.dcp') -Force
 Copy-Item (Join-Path $root 'Package\dclCVCExtras.dcp') (Join-Path $publicDcp 'dclCVCExtras.dcp') -Force
 $designPackage = Join-Path $publicBpl 'dclCVCVcl.bpl'
+$extrasDesignPackage = Join-Path $publicBpl 'dclCVCExtras.bpl'
+Update-DelphiLibraryPath
 Set-KnownPackage
 Write-Host "CVC-VCL instalado no Delphi $DelphiVersion."
 Write-Host 'Reabra o Delphi para carregar os componentes CVC-VCL.'
