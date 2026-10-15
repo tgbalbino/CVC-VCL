@@ -282,7 +282,7 @@ begin
 
   inherited; }
 
- if not (UpCase(Key) in
+ if not CharInSet(UpCase(Key),
     ['0'..'9', 'A'..'Z',
      #1,   // Ctrl+A
      #3,   // Ctrl+C
