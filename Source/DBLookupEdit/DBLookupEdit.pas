@@ -118,6 +118,7 @@ type
     function BuildSearchWhere(const AWhere: string): string;
     procedure UpdateEnabledAppearance;
   protected
+    procedure SetEnabled(Value: Boolean); override;
     procedure Resize; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure Loaded; override;
@@ -166,17 +167,10 @@ type
     property IsValidLookup: Boolean read FIsValid;
   end;
 
-procedure Register;
-
 implementation
 
 uses
   uLookupForm;
-
-procedure Register;
-begin
-  RegisterComponents('CVC-VCL', [TDBLookupEdit]);
-end;
 
 { TDBLookupEdit }
 
@@ -220,7 +214,9 @@ begin
   FIDEdit.ReadOnly := True;       // o código é preenchido pela seleção
   FIDEdit.Enabled := True;        // o código permanece visualmente habilitado
   FIDEdit.TabStop := False;       // não entra no TAB
-  FIDEdit.Color := clWindow;      // aparência de campo habilitado
+  FIDEdit.ParentColor := False;
+  FIDEdit.StyleElements := [];
+  FIDEdit.Color := clSilver;      // codigo fica sempre bloqueado
   FIDEdit.Ctl3D := False;
   FIDEdit.ParentCtl3D := False;
   FIDEdit.Cursor := crArrow;      // não parece editável
@@ -228,6 +224,8 @@ begin
   FDescEdit := TEdit.Create(Self);
   FDescEdit.Parent := Self;
   FDescEdit.AutoSize := False;    // permite fixar a altura manualmente
+  FDescEdit.ParentColor := False;
+  FDescEdit.StyleElements := [];
   FDescEdit.Ctl3D := False;
   FDescEdit.ParentCtl3D := False;
   FDescEdit.OnDblClick := EventDoSearch;
@@ -238,6 +236,7 @@ begin
 
   FSearchButton := TSpeedButton.Create(Self);
   FSearchButton.Parent := Self;
+  FSearchButton.StyleElements := [];
   FSearchButton.Caption := '...';
   FSearchButton.OnClick := EventDoSearchButton;
   FSearchButton.Flat := True;
@@ -727,6 +726,12 @@ begin
   UpdateEnabledAppearance;
 end;
 
+procedure TDBLookupEdit.SetEnabled(Value: Boolean);
+begin
+  inherited;
+  UpdateEnabledAppearance;
+end;
+
 procedure TDBLookupEdit.UpdateEnabledAppearance;
 var
   AColor: TColor;
@@ -738,8 +743,16 @@ begin
 
   // O código é somente informativo: permanece sempre desabilitado e somente
   // leitura, independentemente do estado da descrição.
-  FIDEdit.Enabled := False;
-  FDescEdit.Enabled := Enabled;
+  // O código continua não editável (ReadOnly e sem foco), mas fica Enabled
+  // para que o componente consiga aplicar exatamente o mesmo clSilver dos
+  // demais campos bloqueados, inclusive quando o Delphi usa tema visual.
+  FIDEdit.Enabled := True;
+  // Mantemos o subcampo habilitado apenas para o VCL respeitar a cor
+  // configurada; quando o lookup estiver bloqueado ele continua somente
+  // leitura e sem possibilidade de foco/edição.
+  FDescEdit.Enabled := True;
+  FDescEdit.ReadOnly := not Enabled;
+  FDescEdit.TabStop := Enabled;
   FSearchButton.Enabled := Enabled;
 
   AColor := clWindow;
@@ -753,6 +766,10 @@ begin
   // O campo de código permanece sempre com a aparência de desabilitado.
   FIDEdit.Color := clSilver;
   FDescEdit.Color := AColor;
+  FIDEdit.ParentColor := False;
+  FDescEdit.ParentColor := False;
+  FIDEdit.StyleElements := [];
+  FDescEdit.StyleElements := [];
   FIDEdit.Font.Assign(Font);
   FDescEdit.Font.Assign(Font);
   FSearchButton.Font.Assign(Font);

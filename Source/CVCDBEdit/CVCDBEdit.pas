@@ -15,6 +15,7 @@ type
     FColorBeforeDisable: TColor;
     FFontColorBeforeDisable: TColor;
     FCtl3DBeforeDisable: Boolean;
+    procedure SetEnabled(Value: Boolean); override;
     procedure CMEnabledChanged(var Message: TMessage); message CM_ENABLEDCHANGED;
     procedure ApplyEnabledAppearance;
   public
@@ -30,12 +31,21 @@ implementation
 constructor TCVCDBEdit.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  ParentColor := False;
+  StyleElements := [];
+  Color := clWindow;
   FDisabledColor := clSilver;
   FDisabledFontColor := clWindowText;
   FDisabledCtl3D := False;
 end;
 
 procedure TCVCDBEdit.CMEnabledChanged(var Message: TMessage);
+begin
+  inherited;
+  ApplyEnabledAppearance;
+end;
+
+procedure TCVCDBEdit.SetEnabled(Value: Boolean);
 begin
   inherited;
   ApplyEnabledAppearance;
