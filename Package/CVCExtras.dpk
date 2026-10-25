@@ -11,7 +11,6 @@ requires
 
 contains
   CustomBtn in '..\Source\CustomBtn\CustomBtn.pas',
-  DBValueComboBox in '..\Source\DbCombo\DBValueComboBox.pas',
   DBPersonComboBox in '..\Source\DBPersonComboBox\DBPersonComboBox.pas',
   DateBox in '..\Source\DateBox\DateBox.pas';
 

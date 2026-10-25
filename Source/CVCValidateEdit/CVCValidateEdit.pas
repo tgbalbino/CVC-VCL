@@ -4,11 +4,13 @@ interface
 
 uses
   Winapi.Messages, System.Classes, Vcl.Controls, Vcl.Graphics, Vcl.Forms,
-  JvValidateEdit;
+  JvValidateEdit, CVCVisualSettings;
 
 type
-  TCVCValidateEdit = class(TJvValidateEdit)
+  TCVCValidateEdit = class(TJvValidateEdit, ICVCDisabledColorAware)
   private
+    FDisabledColor: TColor;
+    FDisabledColorOverridden: Boolean;
     FDisabledFontColor: TColor;
     FDisabledCtl3D: Boolean;
     FWasDisabled: Boolean;
@@ -19,10 +21,13 @@ type
     procedure CMEnabledChanged(var Message: TMessage); message CM_ENABLEDCHANGED;
     procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
     procedure ApplyEnabledAppearance;
+    procedure SetDisabledColor(const Value: TColor);
+    procedure CVCDisabledColorChanged;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
   published
-    property DisabledColor default clSilver;
+    property DisabledColor: TColor read FDisabledColor write SetDisabledColor default clSilver;
     property DisabledFontColor: TColor read FDisabledFontColor write FDisabledFontColor default clWindowText;
     property DisabledCtl3D: Boolean read FDisabledCtl3D write FDisabledCtl3D default False;
   end;
@@ -40,9 +45,32 @@ begin
   BorderStyle := bsSingle;
   ParentCtl3D := False;
   Ctl3D := False;
-  DisabledColor := clSilver;
+  FDisabledColor := GetCVCDisabledColor;
+  RegisterCVCDisabledColorControl(Self);
   FDisabledFontColor := clWindowText;
   FDisabledCtl3D := False;
+end;
+
+destructor TCVCValidateEdit.Destroy;
+begin
+  UnregisterCVCDisabledColorControl(Self);
+  inherited;
+end;
+
+procedure TCVCValidateEdit.SetDisabledColor(const Value: TColor);
+begin
+  FDisabledColor := Value;
+  FDisabledColorOverridden := True;
+  ApplyEnabledAppearance;
+end;
+
+procedure TCVCValidateEdit.CVCDisabledColorChanged;
+begin
+  if not FDisabledColorOverridden then
+  begin
+    FDisabledColor := GetCVCDisabledColor;
+    ApplyEnabledAppearance;
+  end;
 end;
 
 procedure TCVCValidateEdit.CMEnabledChanged(var Message: TMessage);

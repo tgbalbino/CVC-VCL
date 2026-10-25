@@ -5,11 +5,13 @@ interface
 uses
   Winapi.Messages, System.Classes, Vcl.Controls, Vcl.Graphics, Vcl.StdCtrls,
   Vcl.Forms,
-  JvToolEdit;
+  JvToolEdit, CVCVisualSettings;
 
 type
-  TCVCDateEdit = class(TJvDateEdit)
+  TCVCDateEdit = class(TJvDateEdit, ICVCDisabledColorAware)
   private
+    FDisabledColor: TColor;
+    FDisabledColorOverridden: Boolean;
     FDisabledFontColor: TColor;
     FDisabledCtl3D: Boolean;
     FWasDisabled: Boolean;
@@ -20,10 +22,13 @@ type
     procedure CMEnabledChanged(var Message: TMessage); message CM_ENABLEDCHANGED;
     procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
     procedure ApplyEnabledAppearance;
+    procedure SetCVCDisabledColor(const Value: TColor);
+    procedure CVCDisabledColorChanged;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
   published
-    property DisabledColor default clSilver;
+    property DisabledColor: TColor read FDisabledColor write SetCVCDisabledColor default clSilver;
     property DisabledFontColor: TColor read FDisabledFontColor write FDisabledFontColor default clWindowText;
     property DisabledCtl3D: Boolean read FDisabledCtl3D write FDisabledCtl3D default False;
   end;
@@ -39,10 +44,33 @@ begin
   BorderStyle := bsSingle;
   ParentCtl3D := False;
   Ctl3D := False;
-  DisabledColor := clSilver;
+  FDisabledColor := GetCVCDisabledColor;
+  RegisterCVCDisabledColorControl(Self);
   DisabledTextColor := clWindowText;
   FDisabledFontColor := clWindowText;
   FDisabledCtl3D := False;
+end;
+
+destructor TCVCDateEdit.Destroy;
+begin
+  UnregisterCVCDisabledColorControl(Self);
+  inherited;
+end;
+
+procedure TCVCDateEdit.SetCVCDisabledColor(const Value: TColor);
+begin
+  FDisabledColor := Value;
+  FDisabledColorOverridden := True;
+  ApplyEnabledAppearance;
+end;
+
+procedure TCVCDateEdit.CVCDisabledColorChanged;
+begin
+  if not FDisabledColorOverridden then
+  begin
+    FDisabledColor := GetCVCDisabledColor;
+    ApplyEnabledAppearance;
+  end;
 end;
 
 procedure TCVCDateEdit.CMEnabledChanged(var Message: TMessage);

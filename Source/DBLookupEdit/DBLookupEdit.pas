@@ -5,7 +5,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.Variants, Winapi.Windows,
   Winapi.Messages, Vcl.Controls, Vcl.StdCtrls, Vcl.Buttons, Vcl.Graphics,
-  Data.DB, Vcl.DBCtrls, FireDAC.Comp.Client;
+  Data.DB, Vcl.DBCtrls, FireDAC.Comp.Client, CVCVisualSettings;
 
 type
   TLabelPosition = (lpTop, lpLeft);
@@ -30,7 +30,12 @@ type
     property SearchFilter: string read FSearchFilter write FSearchFilter;
   end;
 
-  TDBLookupEdit = class(TCustomControl)
+  TDBLookupEdit = class(TCustomControl, ICVCDisabledColorAware)
+  private
+    FDisabledColor: TColor;
+    FDisabledColorOverridden: Boolean;
+    procedure SetDisabledColor(const Value: TColor);
+    procedure CVCDisabledColorChanged;
   private
     FUpdatingFromDataLink: Boolean;
     FSearching: Boolean;
@@ -150,6 +155,7 @@ type
     property IDWidth: Integer read FIDWidth write SetIDWidth default 50;
     property ShowSearchButton: Boolean read FShowSearchButton write SetShowSearchButton default True;
     property HiddenFields: string read FHiddenFields write FHiddenFields;
+    property DisabledColor: TColor read FDisabledColor write SetDisabledColor default clSilver;
 
     property OnBeforeSelectRecord: TBeforeSelectRecordEvent read FOnBeforeSelectRecord write FOnBeforeSelectRecord;
     property OnSearchButtonClick: TDBLookupEditSearchButtonClick read FOnSearchButtonClick write FOnSearchButtonClick;
@@ -177,6 +183,9 @@ uses
 constructor TDBLookupEdit.Create(AOwner: TComponent);
 begin
   inherited;
+
+  FDisabledColor := GetCVCDisabledColor;
+  RegisterCVCDisabledColorControl(Self);
 
   ControlStyle := ControlStyle + [csParentBackground];
   ParentColor := True;
@@ -216,7 +225,7 @@ begin
   FIDEdit.TabStop := False;       // não entra no TAB
   FIDEdit.ParentColor := False;
   FIDEdit.StyleElements := [];
-  FIDEdit.Color := clSilver;      // codigo fica sempre bloqueado
+  FIDEdit.Color := FDisabledColor; // codigo fica sempre bloqueado
   FIDEdit.Ctl3D := False;
   FIDEdit.ParentCtl3D := False;
   FIDEdit.Cursor := crArrow;      // não parece editável
@@ -280,10 +289,27 @@ end;
 
 destructor TDBLookupEdit.Destroy;
 begin
+  UnregisterCVCDisabledColorControl(Self);
   FLabelFont.Free;
   FLookup.Free;
   FDataLink.Free;
   inherited;
+end;
+
+procedure TDBLookupEdit.SetDisabledColor(const Value: TColor);
+begin
+  FDisabledColor := Value;
+  FDisabledColorOverridden := True;
+  UpdateEnabledAppearance;
+end;
+
+procedure TDBLookupEdit.CVCDisabledColorChanged;
+begin
+  if not FDisabledColorOverridden then
+  begin
+    FDisabledColor := GetCVCDisabledColor;
+    UpdateEnabledAppearance;
+  end;
 end;
 
 procedure TDBLookupEdit.Notification(AComponent: TComponent; Operation: TOperation);
@@ -607,7 +633,11 @@ begin
   if FLookup.OutrosCampos <> '' then
     Campos := Campos + ',' + FLookup.OutrosCampos;
 
-  PrepareQuery(BuildBaseSelect(Campos, BuildSearchWhere(FLookup.CampoRetorno + ' LIKE :P')));
+  // A base de dados pode armazenar descrições em maiúsculas, enquanto o
+  // usuário normalmente pesquisa usando qualquer combinação de caixa.
+  // Normalizar os dois lados evita que a busca dependa da capitalização.
+  PrepareQuery(BuildBaseSelect(Campos,
+    BuildSearchWhere('UPPER(' + FLookup.CampoRetorno + ') LIKE UPPER(:P)')));
 
   FQuery.ParamByName('P').AsString := '%' + FDescEdit.Text + '%';
   FQuery.Open;
@@ -744,7 +774,7 @@ begin
   // O código é somente informativo: permanece sempre desabilitado e somente
   // leitura, independentemente do estado da descrição.
   // O código continua não editável (ReadOnly e sem foco), mas fica Enabled
-  // para que o componente consiga aplicar exatamente o mesmo clSilver dos
+  // para que o componente consiga aplicar exatamente a mesma cor dos
   // demais campos bloqueados, inclusive quando o Delphi usa tema visual.
   FIDEdit.Enabled := True;
   // Mantemos o subcampo habilitado apenas para o VCL respeitar a cor
@@ -759,12 +789,12 @@ begin
   AFontColor := Font.Color;
   if not Enabled then
   begin
-    AColor := clSilver;
+    AColor := FDisabledColor;
     AFontColor := clWindowText;
   end;
 
   // O campo de código permanece sempre com a aparência de desabilitado.
-  FIDEdit.Color := clSilver;
+  FIDEdit.Color := FDisabledColor;
   FDescEdit.Color := AColor;
   FIDEdit.ParentColor := False;
   FDescEdit.ParentColor := False;

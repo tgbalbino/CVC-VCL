@@ -3,12 +3,14 @@ unit CVCDBEdit;
 interface
 
 uses
-  Winapi.Messages, System.Classes, Vcl.Controls, Vcl.DBCtrls, Vcl.Graphics;
+  Winapi.Messages, System.Classes, Vcl.Controls, Vcl.DBCtrls, Vcl.Graphics,
+  CVCVisualSettings;
 
 type
-  TCVCDBEdit = class(TDBEdit)
+  TCVCDBEdit = class(TDBEdit, ICVCDisabledColorAware)
   private
     FDisabledColor: TColor;
+    FDisabledColorOverridden: Boolean;
     FDisabledFontColor: TColor;
     FDisabledCtl3D: Boolean;
     FWasDisabled: Boolean;
@@ -18,10 +20,13 @@ type
     procedure SetEnabled(Value: Boolean); override;
     procedure CMEnabledChanged(var Message: TMessage); message CM_ENABLEDCHANGED;
     procedure ApplyEnabledAppearance;
+    procedure SetDisabledColor(const Value: TColor);
+    procedure CVCDisabledColorChanged;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
   published
-    property DisabledColor: TColor read FDisabledColor write FDisabledColor default clSilver;
+    property DisabledColor: TColor read FDisabledColor write SetDisabledColor default clSilver;
     property DisabledFontColor: TColor read FDisabledFontColor write FDisabledFontColor default clWindowText;
     property DisabledCtl3D: Boolean read FDisabledCtl3D write FDisabledCtl3D default False;
   end;
@@ -34,9 +39,32 @@ begin
   ParentColor := False;
   StyleElements := [];
   Color := clWindow;
-  FDisabledColor := clSilver;
+  FDisabledColor := GetCVCDisabledColor;
+  RegisterCVCDisabledColorControl(Self);
   FDisabledFontColor := clWindowText;
   FDisabledCtl3D := False;
+end;
+
+destructor TCVCDBEdit.Destroy;
+begin
+  UnregisterCVCDisabledColorControl(Self);
+  inherited;
+end;
+
+procedure TCVCDBEdit.SetDisabledColor(const Value: TColor);
+begin
+  FDisabledColor := Value;
+  FDisabledColorOverridden := True;
+  ApplyEnabledAppearance;
+end;
+
+procedure TCVCDBEdit.CVCDisabledColorChanged;
+begin
+  if not FDisabledColorOverridden then
+  begin
+    FDisabledColor := GetCVCDisabledColor;
+    ApplyEnabledAppearance;
+  end;
 end;
 
 procedure TCVCDBEdit.CMEnabledChanged(var Message: TMessage);
