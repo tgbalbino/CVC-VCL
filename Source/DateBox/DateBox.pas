@@ -53,14 +53,7 @@ type
     { Published declarations }
   end;
 
-procedure Register;
-
 implementation
-
-procedure Register;
-begin
-  RegisterComponents('Samples', [TDateBox]);
-end;
 
 { TDateBox }
 

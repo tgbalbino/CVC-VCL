@@ -1,5 +1,7 @@
 package dclCVCExtras;
 
+{$R 'CVCExtrasIcons.dcr'}
+
 {$DESCRIPTION 'CVC-VCL - componentes pessoais'}
 
 requires

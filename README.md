@@ -15,6 +15,24 @@ componentes de edição ligados a banco de dados e padronização visual.
 - `TDBPersonComboBox`: combo ligado a dataset para textos e valores de pessoas.
 - `TDateBox`: grupo de período com filtros de data e geração de SQL.
 
+## Cor global de componentes desabilitados
+
+Defina a cor uma única vez, por exemplo na inicialização do projeto ou no
+`DataModule` principal:
+
+```delphi
+uses
+  CVCVisualSettings;
+
+begin
+  SetCVCDisabledColor($00E6E6E6);
+end;
+```
+
+Essa configuração atualiza os componentes CVC já criados e também passa a ser
+o padrão dos próximos componentes. Para uma exceção individual, defina a
+propriedade `DisabledColor` do componente no Object Inspector ou em código.
+
 ## Compatibilidade
 
 O pacote é preparado inicialmente para Delphi 10.3 Rio Win32 e utiliza JVCL

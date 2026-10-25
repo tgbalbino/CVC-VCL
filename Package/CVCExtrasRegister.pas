@@ -9,14 +9,12 @@ implementation
 uses
   System.Classes,
   CustomBtn,
-  DBValueComboBox,
   DBPersonComboBox,
   DateBox;
 
 procedure Register;
 begin
-  RegisterComponents('CVC-VCL', [TCustomBtn, TDBValueComboBox,
-    TDBPersonComboBox, TDateBox]);
+  RegisterComponents('CVC-VCL', [TCustomBtn, TDBPersonComboBox, TDateBox]);
 end;
 
 end.

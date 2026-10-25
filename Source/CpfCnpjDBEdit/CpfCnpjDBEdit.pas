@@ -71,14 +71,7 @@ Const
   MascaraCNPJ_ = 'AA\.AAA\.AAA\/AAAA\-00;0;_';
 
 
-procedure Register;
-
 implementation
-
-procedure Register;
-begin
-  RegisterComponents('Samples', [TCpfCnpjDBEdit]);
-end;
 
 function CharIsNum(const C: Char): Boolean;
 begin
