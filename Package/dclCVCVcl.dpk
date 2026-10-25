@@ -1,5 +1,7 @@
 package dclCVCVcl;
 
+{$R 'CVCVclIcons.dcr'}
+
 {$DESCRIPTION 'CVC-VCL - componentes do ERP'}
 
 requires
