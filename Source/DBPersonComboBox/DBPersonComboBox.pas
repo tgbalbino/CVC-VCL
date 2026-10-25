@@ -39,17 +39,10 @@ type
     property TabOrder;
   end;
 
-procedure Register;
-
 implementation
 
 uses
   System.SysUtils;
-
-procedure Register;
-begin
-  RegisterComponents('Samples', [TDBPersonComboBox]);
-end;
 
 { TDBPersonComboBox }
 

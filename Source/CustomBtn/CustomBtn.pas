@@ -36,14 +36,7 @@ type
     property OnClick: TNotifyEvent read FOnClick write FOnClick;
   end;
 
-procedure Register;
-
 implementation
-
-procedure Register;
-begin
-  RegisterComponents('Samples', [TCustomBtn]);
-end;
 
 { TPngButton }
 

@@ -37,14 +37,7 @@ type
     property Visible;
   end;
 
-procedure Register;
-
 implementation
-
-procedure Register;
-begin
-  RegisterComponents('Samples', [TDBValueComboBox]);
-end;
 
 { TDBValueComboBox }
 
