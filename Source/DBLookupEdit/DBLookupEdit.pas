@@ -274,7 +274,8 @@ procedure TDBLookupEdit.AdvanceFocusAfterEnter;
 var
   Form: TCustomForm;
 begin
-  if not FAdvanceFocusOnEnter or not FIsValid then
+  if not FAdvanceFocusOnEnter or
+     ((not FIsValid) and (Trim(FDescEdit.Text) <> '')) then
     Exit;
 
   Form := GetParentForm(Self);
@@ -289,7 +290,10 @@ begin
   begin
     Key := 0;
     DoSearch;
-    AdvanceFocusAfterEnter;
+    { Campo vazio não exige pesquisa, mas o Enter continua tendo o mesmo
+      significado de Tab. Texto inválido permanece no campo para correção. }
+    if FIsValid or (Trim(FDescEdit.Text) = '') then
+      AdvanceFocusAfterEnter;
   end;
 end;
 
