@@ -21,12 +21,14 @@ type
   private
     FResult: Boolean;
     FDataSource: TDataSource;
-  //  FDataSource: TDataSource;
     FHiddenFields: TStringList;
+    FDisplayFields: TStringList;
     function SplitStr(const Str, Delimiter: string): TArray<string>;
     procedure HideGridColumns;
+    procedure ApplyColumnCaptions(const ACaptionCampos: string);
   public
-    class function Execute(ADataSet: TDataSet; ACaptionCampos: string; HiddenFields: string = ''): Boolean;
+    class function Execute(ADataSet: TDataSet; ACaptionCampos: string;
+      HiddenFields: string = ''; DisplayFields: string = ''): Boolean;
   end;
 
 implementation
@@ -55,11 +57,10 @@ begin
     btnOk.Click;
 end;
 
-class function TfrmLookup.Execute(ADataSet: TDataSet; ACaptionCampos: string; HiddenFields: string = ''): Boolean;
+class function TfrmLookup.Execute(ADataSet: TDataSet; ACaptionCampos: string;
+  HiddenFields: string = ''; DisplayFields: string = ''): Boolean;
 var
   frm: TfrmLookup;
-  Colunas: TArray<string>;
-  i: Integer;
 begin
   frm := TfrmLookup.Create(nil);
   try
@@ -67,15 +68,10 @@ begin
     frm.DBGrid1.DataSource := frm.FDataSource;
 
     frm.FHiddenFields.DelimitedText := HiddenFields;
-    // Monta os títulos das colunas se CaptionCampos foi passado
-    if ACaptionCampos <> '' then
-    begin
-      Colunas := frm.SplitStr(ACaptionCampos, ',');
-      for i := 0 to Min(High(Colunas), frm.DBGrid1.Columns.Count - 1) do
-        frm.DBGrid1.Columns[i].Title.Caption := Trim(Colunas[i]);
-    end;
+    frm.FDisplayFields.DelimitedText := DisplayFields;
 
     frm.HideGridColumns;
+    frm.ApplyColumnCaptions(ACaptionCampos);
     frm.FResult := False;
     frm.ShowModal;
     Result := frm.FResult;
@@ -87,12 +83,14 @@ end;
 procedure TfrmLookup.FormCreate(Sender: TObject);
 begin
   FHiddenFields := TStringList.Create;
+  FDisplayFields := TStringList.Create;
   FDataSource := TDataSource.Create(nil);
 end;
 
 procedure TfrmLookup.FormDestroy(Sender: TObject);
 begin
   FHiddenFields.Free;
+  FDisplayFields.Free;
   FDataSource.Free;
 end;
 
@@ -104,11 +102,32 @@ begin
   for i := 0 to DBGrid1.Columns.Count - 1 do
   begin
     FieldName := DBGrid1.Columns[i].Field.FieldName;
-    if FHiddenFields.IndexOf(FieldName) >= 0 then
+    if (FDisplayFields.Count > 0) then
+      DBGrid1.Columns[i].Visible := FDisplayFields.IndexOf(FieldName) >= 0
+    else if FHiddenFields.IndexOf(FieldName) >= 0 then
       DBGrid1.Columns[i].Visible := False
     else
       DBGrid1.Columns[i].Visible := True;
   end;
+end;
+
+procedure TfrmLookup.ApplyColumnCaptions(const ACaptionCampos: string);
+var
+  Colunas: TArray<string>;
+  I, IndiceCaption: Integer;
+begin
+  if ACaptionCampos = '' then
+    Exit;
+
+  Colunas := SplitStr(ACaptionCampos, ',');
+  IndiceCaption := 0;
+  for I := 0 to DBGrid1.Columns.Count - 1 do
+    if DBGrid1.Columns[I].Visible then
+    begin
+      if IndiceCaption <= High(Colunas) then
+        DBGrid1.Columns[I].Title.Caption := Trim(Colunas[IndiceCaption]);
+      Inc(IndiceCaption);
+    end;
 end;
 
 function TfrmLookup.SplitStr(const Str, Delimiter: string): TArray<string>;

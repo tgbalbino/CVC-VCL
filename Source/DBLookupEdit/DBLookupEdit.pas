@@ -5,7 +5,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.Variants, Winapi.Windows,
   Winapi.Messages, Vcl.Controls, Vcl.StdCtrls, Vcl.Buttons, Vcl.Graphics,
-  Data.DB, Vcl.DBCtrls, FireDAC.Comp.Client, CVCVisualSettings;
+  Vcl.Forms, Data.DB, Vcl.DBCtrls, FireDAC.Comp.Client, CVCVisualSettings;
 
 type
   TLabelPosition = (lpTop, lpLeft);
@@ -20,6 +20,7 @@ type
     FID: string;
     FOutrosCampos: string;
     FCaptionCampos: string;
+    FDisplayFields: string;
     FSearchFilter: string;
   published
     property Tabela: string read FTabela write FTabela;
@@ -27,6 +28,7 @@ type
     property ID: string read FID write FID;
     property OutrosCampos: string read FOutrosCampos write FOutrosCampos;
     property CaptionCampos: string read FCaptionCampos write FCaptionCampos;
+    property DisplayFields: string read FDisplayFields write FDisplayFields;
     property SearchFilter: string read FSearchFilter write FSearchFilter;
   end;
 
@@ -66,6 +68,7 @@ type
     FHiddenFields: string;
     FShowSearchButton: Boolean;
     FIDWidth: Integer;
+    FAdvanceFocusOnEnter: Boolean;
 
     { Events }
     FOnBeforeSelectRecord: TBeforeSelectRecordEvent;
@@ -82,6 +85,7 @@ type
     procedure PrepareQueryByText;
     procedure PrepareQueryByID(const AValue: Variant);
     procedure PrepareSearchByID(const AValue: Variant);
+    function LookupFields: string;
     procedure FillFromQuery;
     procedure InternalLoadByID(const AID: Variant);
     procedure DoSearch;
@@ -111,7 +115,6 @@ type
     procedure OnLabelFontChanged(Sender: TObject);
 
     { Messages }
-    procedure WMKeyDown(var Msg: TWMKeyDown); message WM_KEYDOWN;
     procedure CMExit(var Message: TCMExit); message CM_EXIT;
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
     procedure CMEnabledChanged(var Message: TMessage); message CM_ENABLEDCHANGED;
@@ -119,6 +122,7 @@ type
     function GetDescription: string;
     procedure DescEditChange(Sender: TObject);
     procedure DescEditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure AdvanceFocusAfterEnter;
     procedure ClearSelectedID;
     function BuildSearchWhere(const AWhere: string): string;
     procedure UpdateEnabledAppearance;
@@ -156,6 +160,8 @@ type
     property ShowSearchButton: Boolean read FShowSearchButton write SetShowSearchButton default True;
     property HiddenFields: string read FHiddenFields write FHiddenFields;
     property DisabledColor: TColor read FDisabledColor write SetDisabledColor default clSilver;
+    property AdvanceFocusOnEnter: Boolean read FAdvanceFocusOnEnter
+      write FAdvanceFocusOnEnter default True;
 
     property OnBeforeSelectRecord: TBeforeSelectRecordEvent read FOnBeforeSelectRecord write FOnBeforeSelectRecord;
     property OnSearchButtonClick: TDBLookupEditSearchButtonClick read FOnSearchButtonClick write FOnSearchButtonClick;
@@ -197,6 +203,7 @@ begin
   FSelectedIDValue := Null;
   FShowSearchButton := True;
   FIDWidth := 50;
+  FAdvanceFocusOnEnter := True;
   FLabelMargin := 4;
   FLabelPosition := lpTop;
 
@@ -263,6 +270,18 @@ begin
      ClearSelectedID;
 end;
 
+procedure TDBLookupEdit.AdvanceFocusAfterEnter;
+var
+  Form: TCustomForm;
+begin
+  if not FAdvanceFocusOnEnter or not FIsValid then
+    Exit;
+
+  Form := GetParentForm(Self);
+  if Assigned(Form) then
+    PostMessage(Form.Handle, WM_NEXTDLGCTL, 0, 0);
+end;
+
 procedure TDBLookupEdit.DescEditKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
@@ -270,6 +289,7 @@ begin
   begin
     Key := 0;
     DoSearch;
+    AdvanceFocusAfterEnter;
   end;
 end;
 
@@ -448,10 +468,8 @@ begin
 
   if Assigned(FDataLink.Field) and FDataLink.DataSource.DataSet.Active then
   begin
-    if not (FDataLink.DataSource.DataSet.State in dsEditModes) then
-      FDataLink.DataSource.DataSet.Edit;
-
-    FDataLink.Field.Value := Value;
+    if FDataLink.Edit then
+      FDataLink.Field.Value := Value;
   end;
 
   InternalLoadByID(Value);
@@ -512,10 +530,57 @@ end;
 
 procedure TDBLookupEdit.PrepareQueryByID(const AValue: Variant);
 begin
-  PrepareQuery(BuildBaseSelect(FLookup.ID + ', ' + FLookup.CampoRetorno, FLookup.ID + ' = :ID'));
+  PrepareQuery(BuildBaseSelect(LookupFields,
+    BuildSearchWhere(FLookup.ID + ' = :ID')));
 
   FQuery.ParamByName('ID').Value := AValue;
   FQuery.Open;
+end;
+
+function TDBLookupEdit.LookupFields: string;
+var
+  Campos: TStringList;
+
+  procedure AdicionarCampos(const ALista: string);
+  var
+    I: Integer;
+    Campo: string;
+    Lista: TStringList;
+  begin
+    Lista := TStringList.Create;
+    try
+      Lista.StrictDelimiter := True;
+      Lista.Delimiter := ',';
+      Lista.DelimitedText := ALista;
+      for I := 0 to Lista.Count - 1 do
+      begin
+        Campo := Trim(Lista[I]);
+        if (Campo <> '') and (Campos.IndexOf(Campo) < 0) then
+          Campos.Add(Campo);
+      end;
+    finally
+      Lista.Free;
+    end;
+  end;
+
+begin
+  Campos := TStringList.Create;
+  try
+    Campos.StrictDelimiter := True;
+    Campos.Delimiter := ',';
+    Campos.CaseSensitive := False;
+    Campos.Sorted := False;
+
+    { Estes campos continuam disponíveis para a seleção e para a gravação,
+      mesmo quando não fazem parte da apresentação do Grid. }
+    AdicionarCampos(FLookup.ID);
+    AdicionarCampos(FLookup.CampoRetorno);
+    AdicionarCampos(FLookup.OutrosCampos);
+    AdicionarCampos(FLookup.DisplayFields);
+    Result := StringReplace(Campos.CommaText, ',', ', ', [rfReplaceAll]);
+  finally
+    Campos.Free;
+  end;
 end;
 
 procedure TDBLookupEdit.FillFromQuery;
@@ -608,7 +673,8 @@ begin
     begin
       FLookupOpened := True;
       try
-        if not TfrmLookup.Execute(FQuery, FLookup.CaptionCampos, HiddenFields) then
+        if not TfrmLookup.Execute(FQuery, FLookup.CaptionCampos, HiddenFields,
+          FLookup.DisplayFields) then
           Exit;
       finally
         FLookupOpened := false;
@@ -626,17 +692,11 @@ begin
 end;
 
 procedure TDBLookupEdit.PrepareQueryByText;
-var
-  Campos: string;
 begin
-  Campos := FLookup.ID + ', ' + FLookup.CampoRetorno;
-  if FLookup.OutrosCampos <> '' then
-    Campos := Campos + ',' + FLookup.OutrosCampos;
-
   // A base de dados pode armazenar descrições em maiúsculas, enquanto o
   // usuário normalmente pesquisa usando qualquer combinação de caixa.
   // Normalizar os dois lados evita que a busca dependa da capitalização.
-  PrepareQuery(BuildBaseSelect(Campos,
+  PrepareQuery(BuildBaseSelect(LookupFields,
     BuildSearchWhere('UPPER(' + FLookup.CampoRetorno + ') LIKE UPPER(:P)')));
 
   FQuery.ParamByName('P').AsString := '%' + FDescEdit.Text + '%';
@@ -645,7 +705,7 @@ end;
 
 procedure TDBLookupEdit.PrepareSearchByID(const AValue: Variant);
 begin
-  PrepareQuery(BuildBaseSelect(FLookup.ID + ', ' + FLookup.CampoRetorno,
+  PrepareQuery(BuildBaseSelect(LookupFields,
     BuildSearchWhere(FLookup.ID + ' = :ID')));
 
   FQuery.ParamByName('ID').Value := AValue;
@@ -663,16 +723,6 @@ begin
     FOnSearchButtonClick(Self)
   else
     DoSearch;
-end;
-
-procedure TDBLookupEdit.WMKeyDown(var Msg: TWMKeyDown);
-begin
-  inherited;
-  if Msg.CharCode = VK_RETURN then
-  begin
-    //FEnterPressed := True;
-    DoSearch;
-  end;
 end;
 
 procedure TDBLookupEdit.ClearSelectedID;
@@ -695,10 +745,8 @@ begin
   begin
     FUpdatingFromDataLink := True;
     try
-      if not (FDataLink.DataSource.DataSet.State in dsEditModes) then
-        FDataLink.DataSource.DataSet.Edit;
-
-      FDataLink.Field.Clear;
+      if FDataLink.Edit then
+        FDataLink.Field.Clear;
     finally
       FUpdatingFromDataLink := False;
     end;
