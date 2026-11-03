@@ -3,7 +3,7 @@ unit CVCValidateEdit;
 interface
 
 uses
-  Winapi.Messages, System.Classes, Vcl.Controls, Vcl.Graphics, Vcl.Forms,
+  Winapi.Windows, Winapi.Messages, System.Classes, Vcl.Controls, Vcl.Graphics, Vcl.Forms,
   JvValidateEdit, CVCVisualSettings;
 
 type
@@ -20,6 +20,7 @@ type
     procedure SetEnabled(Value: Boolean); override;
     procedure CMEnabledChanged(var Message: TMessage); message CM_ENABLEDCHANGED;
     procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
+    function DoEraseBackground(Canvas: TCanvas; Param: LPARAM): Boolean; override;
     procedure ApplyEnabledAppearance;
     procedure SetDisabledColor(const Value: TColor);
     procedure CVCDisabledColorChanged;
@@ -103,6 +104,19 @@ begin
       Canvas.Free;
     end;
   end;
+end;
+
+function TCVCValidateEdit.DoEraseBackground(Canvas: TCanvas; Param: LPARAM): Boolean;
+begin
+  if not Enabled then
+  begin
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.Color := DisabledColor;
+    Canvas.FillRect(ClientRect);
+    Result := True;
+  end
+  else
+    Result := inherited DoEraseBackground(Canvas, Param);
 end;
 
 procedure TCVCValidateEdit.ApplyEnabledAppearance;

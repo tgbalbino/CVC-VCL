@@ -262,6 +262,7 @@ if (-not $SkipBuild) {
     (Join-Path $root 'Source\EditDialogFireDAC'),
     (Join-Path $root 'Source\DBPersonComboBox'),
     (Join-Path $root 'Package'),
+    (Join-Path $root 'SenhaEdit'),
     $JvclLib,
     $JclLib
   ) -join ';'

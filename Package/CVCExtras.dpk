@@ -12,6 +12,7 @@ requires
 contains
   CustomBtn in '..\Source\CustomBtn\CustomBtn.pas',
   DBPersonComboBox in '..\Source\DBPersonComboBox\DBPersonComboBox.pas',
-  DateBox in '..\Source\DateBox\DateBox.pas';
+  DateBox in '..\Source\DateBox\DateBox.pas',
+  uSenhaEdit in '..\SenhaEdit\uSenhaEdit.pas';
 
 end.

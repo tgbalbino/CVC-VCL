@@ -10,11 +10,12 @@ uses
   System.Classes,
   CustomBtn,
   DBPersonComboBox,
-  DateBox;
+  DateBox,
+  uSenhaEdit;
 
 procedure Register;
 begin
-  RegisterComponents('CVC-VCL', [TCustomBtn, TDBPersonComboBox, TDateBox]);
+  RegisterComponents('CVC-VCL', [TCustomBtn, TDBPersonComboBox, TDateBox, TSenhaEdit]);
 end;
 
 end.

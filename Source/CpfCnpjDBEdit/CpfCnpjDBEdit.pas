@@ -299,6 +299,7 @@ procedure TCpfCnpjDBEdit.Mask;
 var
   Doc: String;
   Fld: TStringField;
+  NewMask: String;
 begin
   if FIsUnMask then
     Exit;
@@ -312,11 +313,14 @@ begin
     Doc := OnlyAlphaNum(Fld.AsString);
 
     if Length(Doc) = 11 then
-      Fld.EditMask := MascaraCPF_
+      NewMask := MascaraCPF_
     else if Length(Doc) = 14 then
-      Fld.EditMask := MascaraCNPJ_
+      NewMask := MascaraCNPJ_
     else
-      Fld.EditMask := '';
+      NewMask := '';
+
+    if Fld.EditMask <> NewMask then
+      Fld.EditMask := NewMask;
   except
   end;
 end;
@@ -345,8 +349,8 @@ end; }
 procedure TCpfCnpjDBEdit.removeMask;
 begin
   FIsUnMask := true;
-  TStringField(Self.DataSource.DataSet.FieldByName(Self.DataField)).EditMask := '';
-  OutputDebugString(Pchar('removeMask.Mask: ' + TStringField(Self.DataSource.DataSet.FieldByName(Self.DataField)).EditMask));
+  if TStringField(Self.DataSource.DataSet.FieldByName(Self.DataField)).EditMask <> '' then
+    TStringField(Self.DataSource.DataSet.FieldByName(Self.DataField)).EditMask := '';
   FIsUnMask := False;
 end;
 
