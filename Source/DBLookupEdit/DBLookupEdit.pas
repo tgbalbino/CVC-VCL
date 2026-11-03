@@ -22,6 +22,7 @@ type
     FCaptionCampos: string;
     FDisplayFields: string;
     FSearchFilter: string;
+    FCampoPesquisaAlternativo: string;
   published
     property Tabela: string read FTabela write FTabela;
     property CampoRetorno: string read FCampoRetorno write FCampoRetorno;
@@ -30,6 +31,7 @@ type
     property CaptionCampos: string read FCaptionCampos write FCaptionCampos;
     property DisplayFields: string read FDisplayFields write FDisplayFields;
     property SearchFilter: string read FSearchFilter write FSearchFilter;
+    property CampoPesquisaAlternativo: string read FCampoPesquisaAlternativo write FCampoPesquisaAlternativo;
   end;
 
   TDBLookupEdit = class(TCustomControl, ICVCDisabledColorAware)
@@ -84,6 +86,7 @@ type
     procedure PrepareQuery(const ASql: string);
     procedure PrepareQueryByText;
     procedure PrepareQueryByID(const AValue: Variant);
+    procedure PrepareSearchByField(const AField, AParamName: string; const AValue: Variant);
     procedure PrepareSearchByID(const AValue: Variant);
     function LookupFields: string;
     procedure FillFromQuery;
@@ -178,6 +181,9 @@ type
     property HasValue: Boolean read GetHasValue;
     property IsValidLookup: Boolean read FIsValid;
   end;
+
+var
+  PriorizaCampoAlternativo: Boolean;
 
 implementation
 
@@ -534,10 +540,16 @@ end;
 
 procedure TDBLookupEdit.PrepareQueryByID(const AValue: Variant);
 begin
-  PrepareQuery(BuildBaseSelect(LookupFields,
-    BuildSearchWhere(FLookup.ID + ' = :ID')));
+  PrepareSearchByField(FLookup.ID, 'ID', AValue);
+end;
 
-  FQuery.ParamByName('ID').Value := AValue;
+procedure TDBLookupEdit.PrepareSearchByField(const AField, AParamName: string;
+  const AValue: Variant);
+begin
+  PrepareQuery(BuildBaseSelect(LookupFields,
+    BuildSearchWhere(AField + ' = :' + AParamName)));
+
+  FQuery.ParamByName(AParamName).Value := AValue;
   FQuery.Open;
 end;
 
@@ -579,6 +591,7 @@ begin
       mesmo quando não fazem parte da apresentação do Grid. }
     AdicionarCampos(FLookup.ID);
     AdicionarCampos(FLookup.CampoRetorno);
+    AdicionarCampos(FLookup.CampoPesquisaAlternativo);
     AdicionarCampos(FLookup.OutrosCampos);
     AdicionarCampos(FLookup.DisplayFields);
     Result := StringReplace(Campos.CommaText, ',', ', ', [rfReplaceAll]);
@@ -588,11 +601,31 @@ begin
 end;
 
 procedure TDBLookupEdit.FillFromQuery;
+var
+  Nome: string;
+  Referencia: string;
 begin
   FUpdatingFromDataLink := True;
   try
     FIDEdit.Text := FQuery.FieldByName(FLookup.ID).AsString;
-    FDescEdit.Text := FQuery.FieldByName(FLookup.CampoRetorno).AsString;
+    Nome := FQuery.FieldByName(FLookup.CampoRetorno).AsString;
+    FDescEdit.Text := Nome;
+
+    { Nos lookups de cliente, quando a preferência pela referência estiver
+      ativa, o valor selecionado também deve ficar visível no padrão
+      "REFERENCIA - NOME". O ID continua sendo gravado normalmente. }
+    if PriorizaCampoAlternativo and
+       SameText(FLookup.Tabela, 'PESSOA') and
+       SameText(FLookup.CampoRetorno, 'NOME') and
+       SameText(FLookup.CampoPesquisaAlternativo, 'REFERENCIA') and
+       (Pos('CLI', UpperCase(FLookup.SearchFilter)) > 0) and
+       Assigned(FQuery.FindField('REFERENCIA')) then
+    begin
+      Referencia := Trim(FQuery.FieldByName('REFERENCIA').AsString);
+      if Referencia <> '' then
+        FDescEdit.Text := Referencia + ' - ' + Nome;
+    end;
+
     FLastDescText := FDescEdit.Text;
     FSelectedIDValue := FQuery.FieldByName(FLookup.ID).Value;
     FIsValid := True;
@@ -655,6 +688,19 @@ begin
 
     if TryStrToInt(Trim(FDescEdit.Text), IDCandidate) then
     begin
+      if PriorizaCampoAlternativo and
+        (Trim(FLookup.CampoPesquisaAlternativo) <> '') then
+      begin
+        PrepareSearchByField(FLookup.CampoPesquisaAlternativo, 'ALT', IDCandidate);
+
+        if not FQuery.IsEmpty then
+        begin
+          SetSelectedID(FQuery.FieldByName(FLookup.ID).Value);
+          FIsValid := True;
+          Exit;
+        end;
+      end;
+
       PrepareSearchByID(IDCandidate);
 
       if not FQuery.IsEmpty then
@@ -662,6 +708,19 @@ begin
         SetSelectedID(FQuery.FieldByName(FLookup.ID).Value);
         FIsValid := True;
         Exit;
+      end;
+
+      if (not PriorizaCampoAlternativo) and
+        (Trim(FLookup.CampoPesquisaAlternativo) <> '') then
+      begin
+        PrepareSearchByField(FLookup.CampoPesquisaAlternativo, 'ALT', IDCandidate);
+
+        if not FQuery.IsEmpty then
+        begin
+          SetSelectedID(FQuery.FieldByName(FLookup.ID).Value);
+          FIsValid := True;
+          Exit;
+        end;
       end;
     end;
 
@@ -700,9 +759,16 @@ begin
   // A base de dados pode armazenar descrições em maiúsculas, enquanto o
   // usuário normalmente pesquisa usando qualquer combinação de caixa.
   // Normalizar os dois lados evita que a busca dependa da capitalização.
-  PrepareQuery(BuildBaseSelect(LookupFields,
-    BuildSearchWhere('UPPER(' + FLookup.CampoRetorno + ') LIKE UPPER(:P)')));
+  if Trim(FLookup.CampoPesquisaAlternativo) <> '' then
+    PrepareQuery(BuildBaseSelect(LookupFields,
+      BuildSearchWhere('(UPPER(' + FLookup.CampoRetorno + ') LIKE UPPER(:P)' +
+        ' OR CAST(' + FLookup.CampoPesquisaAlternativo + ' AS VARCHAR(30)) LIKE :P)')))
+  else
+    PrepareQuery(BuildBaseSelect(LookupFields,
+      BuildSearchWhere('UPPER(' + FLookup.CampoRetorno + ') LIKE UPPER(:P)')));
 
+  FQuery.ParamByName('P').DataType := ftString;
+  FQuery.ParamByName('P').Size := 255;
   FQuery.ParamByName('P').AsString := '%' + FDescEdit.Text + '%';
   FQuery.Open;
 end;
