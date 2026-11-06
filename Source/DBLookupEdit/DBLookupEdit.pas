@@ -12,6 +12,7 @@ type
 
   TBeforeSelectRecordEvent = procedure(Sender: TObject; const Query: TFDQuery) of object;
   TDBLookupEditSearchButtonClick = procedure(Sender: TObject) of object;
+  TDBLookupEditErrorEvent = procedure(Sender: TObject; const E: Exception) of object;
 
   TDBLookupSettings = class(TPersistent)
   private
@@ -43,6 +44,7 @@ type
   private
     FUpdatingFromDataLink: Boolean;
     FSearching: Boolean;
+    FSearchOnExit: Boolean;
     FLookupOpened: Boolean;
     { Visual }
     FLabel: TLabel;
@@ -76,6 +78,7 @@ type
     FOnBeforeSelectRecord: TBeforeSelectRecordEvent;
     FOnSearchButtonClick: TDBLookupEditSearchButtonClick;
     FOnAfterSelect: TNotifyEvent;
+    FOnLookupError: TDBLookupEditErrorEvent;
 
     FOldDescWndProc: TWndMethod;
     procedure DescEditWndProc(var Msg: TMessage);
@@ -95,6 +98,7 @@ type
 
     { Setters }
     procedure SetLookup(const Value: TDBLookupSettings);
+    procedure SetConnection(const Value: TFDConnection);
     procedure SetDataSource(const Value: TDataSource);
     procedure SetDataField(const Value: string);
     procedure SetLabelCaption(const Value: string);
@@ -129,6 +133,7 @@ type
     procedure ClearSelectedID;
     function BuildSearchWhere(const AWhere: string): string;
     procedure UpdateEnabledAppearance;
+    procedure ValidateLookupConfiguration;
   protected
     procedure SetEnabled(Value: Boolean); override;
     procedure Resize; override;
@@ -146,7 +151,7 @@ type
     property Description: string read GetDescription;
 
   published
-    property Connection: TFDConnection read FConnection write FConnection;
+    property Connection: TFDConnection read FConnection write SetConnection;
     property Lookup: TDBLookupSettings read FLookup write SetLookup;
 
     property DataSource: TDataSource read FDataSource write SetDataSource;
@@ -165,10 +170,12 @@ type
     property DisabledColor: TColor read FDisabledColor write SetDisabledColor default clSilver;
     property AdvanceFocusOnEnter: Boolean read FAdvanceFocusOnEnter
       write FAdvanceFocusOnEnter default True;
+    property SearchOnExit: Boolean read FSearchOnExit write FSearchOnExit default True;
 
     property OnBeforeSelectRecord: TBeforeSelectRecordEvent read FOnBeforeSelectRecord write FOnBeforeSelectRecord;
     property OnSearchButtonClick: TDBLookupEditSearchButtonClick read FOnSearchButtonClick write FOnSearchButtonClick;
     property OnAfterSelect: TNotifyEvent read FOnAfterSelect write FOnAfterSelect;
+    property OnLookupError: TDBLookupEditErrorEvent read FOnLookupError write FOnLookupError;
 
     property Align;
     property Anchors;
@@ -210,6 +217,7 @@ begin
   FShowSearchButton := True;
   FIDWidth := 50;
   FAdvanceFocusOnEnter := True;
+  FSearchOnExit := True;
   FLabelMargin := 4;
   FLabelPosition := lpTop;
 
@@ -311,6 +319,7 @@ begin
   begin
     if not (csDestroying in ComponentState) and
        not FLookupOpened and
+       FSearchOnExit and
        (Trim(FDescEdit.Text) <> '') and
        (not FIsValid) then
       DoSearch;
@@ -345,8 +354,12 @@ end;
 procedure TDBLookupEdit.Notification(AComponent: TComponent; Operation: TOperation);
 begin
   inherited;
-  if (Operation = opRemove) and (AComponent = FDataSource) then
-    DataSource := nil;
+  if Operation <> opRemove then
+    Exit;
+  if AComponent = FDataSource then
+    DataSource := nil
+  else if AComponent = FConnection then
+    FConnection := nil;
 end;
 
 procedure TDBLookupEdit.SetLookup(const Value: TDBLookupSettings);
@@ -354,10 +367,27 @@ begin
   FLookup.Assign(Value);
 end;
 
+procedure TDBLookupEdit.SetConnection(const Value: TFDConnection);
+begin
+  if FConnection = Value then
+    Exit;
+  if Assigned(FConnection) then
+    FConnection.RemoveFreeNotification(Self);
+  FConnection := Value;
+  if Assigned(FConnection) then
+    FConnection.FreeNotification(Self);
+end;
+
 procedure TDBLookupEdit.SetDataSource(const Value: TDataSource);
 begin
+  if FDataSource = Value then
+    Exit;
+  if Assigned(FDataSource) then
+    FDataSource.RemoveFreeNotification(Self);
   FDataSource := Value;
   FDataLink.DataSource := Value;
+  if Assigned(FDataSource) then
+    FDataSource.FreeNotification(Self);
 end;
 
 procedure TDBLookupEdit.SetDataField(const Value: string);
@@ -415,6 +445,18 @@ begin
 
   if Trim(FLookup.SearchFilter) <> '' then
     Result := Result + ' AND (' + FLookup.SearchFilter + ')';
+end;
+
+procedure TDBLookupEdit.ValidateLookupConfiguration;
+begin
+  if not Assigned(FConnection) then
+    raise EInvalidOp.Create('DBLookupEdit: Connection não configurada.');
+  if Trim(FLookup.Tabela) = '' then
+    raise EInvalidOp.Create('DBLookupEdit: Lookup.Tabela não configurada.');
+  if Trim(FLookup.ID) = '' then
+    raise EInvalidOp.Create('DBLookupEdit: Lookup.ID não configurado.');
+  if Trim(FLookup.CampoRetorno) = '' then
+    raise EInvalidOp.Create('DBLookupEdit: Lookup.CampoRetorno não configurado.');
 end;
 
 procedure TDBLookupEdit.Clear;
@@ -512,6 +554,7 @@ end;
 
 procedure TDBLookupEdit.InternalLoadByID(const AID: Variant);
 begin
+  ValidateLookupConfiguration;
   if not Assigned(FConnection) then
     raise Exception.Create('Conexão não definida.');
 
@@ -681,8 +724,11 @@ begin
    if FSearching then
     Exit;
 
+  ValidateLookupConfiguration;
+
   FSearching := True;
   try
+    try
     if Trim(FDescEdit.Text) = '' then
     begin
       Clear;
@@ -754,6 +800,16 @@ begin
 
     SetSelectedID(FQuery.FieldByName(FLookup.ID).Value);
     FIsValid := True;
+  except
+    on E: Exception do
+    begin
+      FIsValid := False;
+      if Assigned(FOnLookupError) then
+        FOnLookupError(Self, E)
+      else
+        raise;
+    end;
+    end;
   finally
     FSearching := False;
     // Cada lookup usa a conexão compartilhada do aplicativo. Manter a

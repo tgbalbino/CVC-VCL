@@ -12,6 +12,9 @@ Demo manual e isolada para testar `TDBLookupEdit` sem abrir o Controle de Vendas
 - limpeza do valor;
 - atualização do `DataLink` e do `TFDMemTable`;
 - mudança da cor global de campo desabilitado.
+- alternância de `SearchOnExit` para reproduzir campos críticos sem pesquisa
+  automática ao perder o foco;
+- captura de falhas por `OnLookupError` sem encerrar a aplicação.
 
 ## Execução
 

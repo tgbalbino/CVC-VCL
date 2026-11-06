@@ -38,6 +38,7 @@ type
     procedure CarregarClick(Sender: TObject);
     procedure CorClick(Sender: TObject);
     procedure LookupAfterSelect(Sender: TObject);
+    procedure LookupError(Sender: TObject; const E: Exception);
     procedure Registrar(const AMensagem: string);
     function SenhaPadrao: string;
   public
@@ -131,6 +132,7 @@ begin
   FLkpTipo.Lookup.CaptionCampos := 'Código,Tipo';
   FLkpTipo.Lookup.SearchFilter := 'ATIVO = ''S''';
   FLkpTipo.OnAfterSelect := LookupAfterSelect;
+  FLkpTipo.OnLookupError := LookupError;
 
   L := TLabel.Create(Self); L.Parent := Self; L.Left := 470; L.Top := 178; L.Caption := 'ID gravado:';
   FEdId := TDBEdit.Create(Self); FEdId.Parent := Self; FEdId.Left := 545; FEdId.Top := 174; FEdId.Width := 100; FEdId.DataSource := FSource; FEdId.DataField := 'IDTIPO'; FEdId.ReadOnly := True;
@@ -218,6 +220,11 @@ procedure TfrmDBLookupEditDemo.LookupAfterSelect(Sender: TObject);
 begin
   Registrar('OnAfterSelect: ID=' + VarToStr(FLkpTipo.SelectedID) +
     ', texto="' + FLkpTipo.Description + '"');
+end;
+
+procedure TfrmDBLookupEditDemo.LookupError(Sender: TObject; const E: Exception);
+begin
+  Registrar('OnLookupError: ' + E.Message);
 end;
 
 end.
