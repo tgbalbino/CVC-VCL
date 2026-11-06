@@ -458,18 +458,6 @@ end;
 
 procedure TDBLookupEdit.SetSelectedID(const Value: Variant);
 begin
-{  if VarSameValue(GetSelectedID, Value) then
-    Exit;
-
-  if VarIsNull(Value) or VarIsEmpty(Value) then
-  begin
-    Clear;
-    Exit;
-  end;
-
-  InternalLoadByID(Value);  }
-
-
   if VarIsNull(Value) or VarIsEmpty(Value) then
   begin
     Clear;
@@ -478,11 +466,28 @@ begin
 
   if Assigned(FDataLink.Field) and FDataLink.DataSource.DataSet.Active then
   begin
-    if FDataLink.Edit then
-      FDataLink.Field.Value := Value;
+    if not VarSameValue(GetSelectedID, Value) then
+    begin
+      // Atualizar o campo dispara DataChange. Marcar a origem da alteração
+      // evita que o próprio lookup reentre durante o BeforePost.
+      FUpdatingFromDataLink := True;
+      try
+        if FDataLink.Edit then
+          FDataLink.Field.Value := Value;
+      finally
+        FUpdatingFromDataLink := False;
+      end;
+    end;
   end;
 
-  InternalLoadByID(Value);
+  // Durante DoSearch a linha já está aberta em FQuery. Reconsultar a mesma
+  // chave aqui faz o DataLink disparar DataChange enquanto a busca ainda está
+  // no ciclo de edição e pode causar reentrada/stack overflow.
+  if not (FQuery.Active and
+    SameText(VarToStr(FQuery.FieldByName(FLookup.ID).Value), VarToStr(Value))) then
+    InternalLoadByID(Value)
+  else
+    FillFromQuery;
 end;
 
 function TDBLookupEdit.GetHasValue: Boolean;
@@ -751,6 +756,11 @@ begin
     FIsValid := True;
   finally
     FSearching := False;
+    // Cada lookup usa a conexão compartilhada do aplicativo. Manter a
+    // consulta interna aberta depois da resolução impede outro lookup de
+    // consultar a mesma conexão e deixa a interface aparentemente travada.
+    if FQuery.Active then
+      FQuery.Close;
   end;
 end;
 
