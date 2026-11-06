@@ -135,6 +135,7 @@ type
     function BuildSearchWhere(const AWhere: string): string;
     procedure UpdateEnabledAppearance;
     procedure ValidateLookupConfiguration;
+    procedure ValidateIdentifierList(const AValue, AName: string; AAllowEmpty: Boolean);
   protected
     procedure SetEnabled(Value: Boolean); override;
     procedure Resize; override;
@@ -449,6 +450,37 @@ begin
     Result := Result + ' AND (' + FLookup.SearchFilter + ')';
 end;
 
+procedure TDBLookupEdit.ValidateIdentifierList(const AValue, AName: string;
+  AAllowEmpty: Boolean);
+var
+  Lista: TStringList;
+  I, J: Integer;
+  Item: string;
+begin
+  if AAllowEmpty and (Trim(AValue) = '') then
+    Exit;
+  Lista := TStringList.Create;
+  try
+    Lista.StrictDelimiter := True;
+    Lista.Delimiter := ',';
+    Lista.DelimitedText := AValue;
+    if Lista.Count = 0 then
+      raise EInvalidOp.Create('DBLookupEdit: ' + AName + ' não configurado.');
+    for I := 0 to Lista.Count - 1 do
+    begin
+      Item := Trim(Lista[I]);
+      if Item = '' then
+        raise EInvalidOp.Create('DBLookupEdit: ' + AName + ' contém campo vazio.');
+      for J := 1 to Length(Item) do
+        if not CharInSet(Item[J], ['A'..'Z', 'a'..'z', '0'..'9', '_', '$']) then
+          raise EInvalidOp.CreateFmt('DBLookupEdit: identificador inválido em %s: %s',
+            [AName, Item]);
+    end;
+  finally
+    Lista.Free;
+  end;
+end;
+
 procedure TDBLookupEdit.ValidateLookupConfiguration;
 begin
   if not Assigned(FConnection) then
@@ -459,6 +491,13 @@ begin
     raise EInvalidOp.Create('DBLookupEdit: Lookup.ID não configurado.');
   if Trim(FLookup.CampoRetorno) = '' then
     raise EInvalidOp.Create('DBLookupEdit: Lookup.CampoRetorno não configurado.');
+  ValidateIdentifierList(FLookup.Tabela, 'Lookup.Tabela', False);
+  ValidateIdentifierList(FLookup.ID, 'Lookup.ID', False);
+  ValidateIdentifierList(FLookup.CampoRetorno, 'Lookup.CampoRetorno', False);
+  ValidateIdentifierList(FLookup.CampoPesquisaAlternativo,
+    'Lookup.CampoPesquisaAlternativo', True);
+  ValidateIdentifierList(FLookup.OutrosCampos, 'Lookup.OutrosCampos', True);
+  ValidateIdentifierList(FLookup.DisplayFields, 'Lookup.DisplayFields', True);
 end;
 
 procedure TDBLookupEdit.Clear;
