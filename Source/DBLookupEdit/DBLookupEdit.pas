@@ -60,6 +60,7 @@ type
     { Data }
     FConnection: TFDConnection;
     FQuery: TFDQuery;
+    FLoadQuery: TFDQuery;
     FLookup: TDBLookupSettings;
     FDataSource: TDataSource;
     FDataLink: TFieldDataLink;
@@ -86,13 +87,13 @@ type
     { Internal helpers }
     procedure ResizeControls;
     function BuildBaseSelect(const AFields, AWhere: string): string;
-    procedure PrepareQuery(const ASql: string);
-    procedure PrepareQueryByText;
-    procedure PrepareQueryByID(const AValue: Variant);
-    procedure PrepareSearchByField(const AField, AParamName: string; const AValue: Variant);
-    procedure PrepareSearchByID(const AValue: Variant);
+    procedure PrepareQuery(AQuery: TFDQuery; const ASql: string);
+    procedure PrepareQueryByText(AQuery: TFDQuery);
+    procedure PrepareQueryByID(AQuery: TFDQuery; const AValue: Variant);
+    procedure PrepareSearchByField(AQuery: TFDQuery; const AField, AParamName: string; const AValue: Variant);
+    procedure PrepareSearchByID(AQuery: TFDQuery; const AValue: Variant);
     function LookupFields: string;
-    procedure FillFromQuery;
+    procedure FillFromQuery(AQuery: TFDQuery);
     procedure InternalLoadByID(const AID: Variant);
     procedure DoSearch;
 
@@ -224,6 +225,7 @@ begin
   FLookup := TDBLookupSettings.Create;
 
   FQuery := TFDQuery.Create(Self);
+  FLoadQuery := TFDQuery.Create(Self);
 
   FDataLink := TFieldDataLink.Create;
   FDataLink.Control := Self;
@@ -529,7 +531,7 @@ begin
     SameText(VarToStr(FQuery.FieldByName(FLookup.ID).Value), VarToStr(Value))) then
     InternalLoadByID(Value)
   else
-    FillFromQuery;
+    FillFromQuery(FQuery);
 end;
 
 function TDBLookupEdit.GetHasValue: Boolean;
@@ -558,16 +560,19 @@ begin
   if not Assigned(FConnection) then
     raise Exception.Create('Conexão não definida.');
 
-  PrepareQueryByID(AID);
+  PrepareQueryByID(FLoadQuery, AID);
+  try
+    if FLoadQuery.IsEmpty then
+    begin
+      Clear;
+      Exit;
+    end;
 
-  if FQuery.IsEmpty then
-  begin
-    Clear;
-    Exit;
+    // ATUALIZA SOMENTE OS CONTROLES VISUAIS
+    FillFromQuery(FLoadQuery);
+  finally
+    FLoadQuery.Close;
   end;
-
-  // ATUALIZA SOMENTE OS CONTROLES VISUAIS
-  FillFromQuery;
 end;
 
 function TDBLookupEdit.BuildBaseSelect(const AFields, AWhere: string): string;
@@ -575,30 +580,30 @@ begin
   Result := Format('SELECT %s FROM %s WHERE %s', [AFields, FLookup.Tabela, AWhere]);
 end;
 
-procedure TDBLookupEdit.PrepareQuery(const ASql: string);
+procedure TDBLookupEdit.PrepareQuery(AQuery: TFDQuery; const ASql: string);
 begin
-  FQuery.Close;
-  FQuery.Connection := FConnection;
+  AQuery.Close;
+  AQuery.Connection := FConnection;
 
   // Só reatribui o SQL se mudou, evitando que o FireDAC precise
   // reanalisar/repreparar o comando a cada busca com o mesmo Lookup.
-  if FQuery.SQL.Text <> ASql then
-    FQuery.SQL.Text := ASql;
+  if AQuery.SQL.Text <> ASql then
+    AQuery.SQL.Text := ASql;
 end;
 
-procedure TDBLookupEdit.PrepareQueryByID(const AValue: Variant);
+procedure TDBLookupEdit.PrepareQueryByID(AQuery: TFDQuery; const AValue: Variant);
 begin
-  PrepareSearchByField(FLookup.ID, 'ID', AValue);
+  PrepareSearchByField(AQuery, FLookup.ID, 'ID', AValue);
 end;
 
-procedure TDBLookupEdit.PrepareSearchByField(const AField, AParamName: string;
+procedure TDBLookupEdit.PrepareSearchByField(AQuery: TFDQuery; const AField, AParamName: string;
   const AValue: Variant);
 begin
-  PrepareQuery(BuildBaseSelect(LookupFields,
+  PrepareQuery(AQuery, BuildBaseSelect(LookupFields,
     BuildSearchWhere(AField + ' = :' + AParamName)));
 
-  FQuery.ParamByName(AParamName).Value := AValue;
-  FQuery.Open;
+  AQuery.ParamByName(AParamName).Value := AValue;
+  AQuery.Open;
 end;
 
 function TDBLookupEdit.LookupFields: string;
@@ -648,15 +653,15 @@ begin
   end;
 end;
 
-procedure TDBLookupEdit.FillFromQuery;
+procedure TDBLookupEdit.FillFromQuery(AQuery: TFDQuery);
 var
   Nome: string;
   Referencia: string;
 begin
   FUpdatingFromDataLink := True;
   try
-    FIDEdit.Text := FQuery.FieldByName(FLookup.ID).AsString;
-    Nome := FQuery.FieldByName(FLookup.CampoRetorno).AsString;
+    FIDEdit.Text := AQuery.FieldByName(FLookup.ID).AsString;
+    Nome := AQuery.FieldByName(FLookup.CampoRetorno).AsString;
     FDescEdit.Text := Nome;
 
     { Nos lookups de cliente, quando a preferência pela referência estiver
@@ -667,15 +672,15 @@ begin
        SameText(FLookup.CampoRetorno, 'NOME') and
        SameText(FLookup.CampoPesquisaAlternativo, 'REFERENCIA') and
        (Pos('CLI', UpperCase(FLookup.SearchFilter)) > 0) and
-       Assigned(FQuery.FindField('REFERENCIA')) then
+       Assigned(AQuery.FindField('REFERENCIA')) then
     begin
-      Referencia := Trim(FQuery.FieldByName('REFERENCIA').AsString);
+      Referencia := Trim(AQuery.FieldByName('REFERENCIA').AsString);
       if Referencia <> '' then
         FDescEdit.Text := Referencia + ' - ' + Nome;
     end;
 
     FLastDescText := FDescEdit.Text;
-    FSelectedIDValue := FQuery.FieldByName(FLookup.ID).Value;
+    FSelectedIDValue := AQuery.FieldByName(FLookup.ID).Value;
     FIsValid := True;
 
   finally
@@ -742,7 +747,7 @@ begin
       if PriorizaCampoAlternativo and
         (Trim(FLookup.CampoPesquisaAlternativo) <> '') then
       begin
-        PrepareSearchByField(FLookup.CampoPesquisaAlternativo, 'ALT', IDCandidate);
+        PrepareSearchByField(FQuery, FLookup.CampoPesquisaAlternativo, 'ALT', IDCandidate);
 
         if not FQuery.IsEmpty then
         begin
@@ -752,7 +757,7 @@ begin
         end;
       end;
 
-      PrepareSearchByID(IDCandidate);
+      PrepareSearchByID(FQuery, IDCandidate);
 
       if not FQuery.IsEmpty then
       begin
@@ -764,7 +769,7 @@ begin
       if (not PriorizaCampoAlternativo) and
         (Trim(FLookup.CampoPesquisaAlternativo) <> '') then
       begin
-        PrepareSearchByField(FLookup.CampoPesquisaAlternativo, 'ALT', IDCandidate);
+        PrepareSearchByField(FQuery, FLookup.CampoPesquisaAlternativo, 'ALT', IDCandidate);
 
         if not FQuery.IsEmpty then
         begin
@@ -775,7 +780,7 @@ begin
       end;
     end;
 
-    PrepareQueryByText;
+    PrepareQueryByText(FQuery);
 
     if FQuery.IsEmpty then
     begin
@@ -783,8 +788,14 @@ begin
       Exit;
     end;
 
-    if FQuery.RecordCount > 1 then
+    // FetchAll torna a leitura determinística; RecordCount pode variar com o
+    // modo de fetch do FireDAC e não deve decidir se a grade será aberta.
+    FQuery.FetchAll;
+    FQuery.First;
+    FQuery.Next;
+    if not FQuery.Eof then
     begin
+      FQuery.First;
       FLookupOpened := True;
       try
         if not TfrmLookup.Execute(FQuery, FLookup.CaptionCampos, HiddenFields,
@@ -797,6 +808,7 @@ begin
       if Assigned(FOnBeforeSelectRecord) then
         FOnBeforeSelectRecord(Self, FQuery);
     end;
+    FQuery.First;
 
     SetSelectedID(FQuery.FieldByName(FLookup.ID).Value);
     FIsValid := True;
@@ -820,32 +832,32 @@ begin
   end;
 end;
 
-procedure TDBLookupEdit.PrepareQueryByText;
+procedure TDBLookupEdit.PrepareQueryByText(AQuery: TFDQuery);
 begin
   // A base de dados pode armazenar descrições em maiúsculas, enquanto o
   // usuário normalmente pesquisa usando qualquer combinação de caixa.
   // Normalizar os dois lados evita que a busca dependa da capitalização.
   if Trim(FLookup.CampoPesquisaAlternativo) <> '' then
-    PrepareQuery(BuildBaseSelect(LookupFields,
+    PrepareQuery(AQuery, BuildBaseSelect(LookupFields,
       BuildSearchWhere('(UPPER(' + FLookup.CampoRetorno + ') LIKE UPPER(:P)' +
         ' OR CAST(' + FLookup.CampoPesquisaAlternativo + ' AS VARCHAR(30)) LIKE :P)')))
   else
-    PrepareQuery(BuildBaseSelect(LookupFields,
+    PrepareQuery(AQuery, BuildBaseSelect(LookupFields,
       BuildSearchWhere('UPPER(' + FLookup.CampoRetorno + ') LIKE UPPER(:P)')));
 
-  FQuery.ParamByName('P').DataType := ftString;
-  FQuery.ParamByName('P').Size := 255;
-  FQuery.ParamByName('P').AsString := '%' + FDescEdit.Text + '%';
-  FQuery.Open;
+  AQuery.ParamByName('P').DataType := ftString;
+  AQuery.ParamByName('P').Size := 255;
+  AQuery.ParamByName('P').AsString := '%' + FDescEdit.Text + '%';
+  AQuery.Open;
 end;
 
-procedure TDBLookupEdit.PrepareSearchByID(const AValue: Variant);
+procedure TDBLookupEdit.PrepareSearchByID(AQuery: TFDQuery; const AValue: Variant);
 begin
-  PrepareQuery(BuildBaseSelect(LookupFields,
+  PrepareQuery(AQuery, BuildBaseSelect(LookupFields,
     BuildSearchWhere(FLookup.ID + ' = :ID')));
 
-  FQuery.ParamByName('ID').Value := AValue;
-  FQuery.Open;
+  AQuery.ParamByName('ID').Value := AValue;
+  AQuery.Open;
 end;
 
 procedure TDBLookupEdit.EventDoSearch(Sender: TObject);
