@@ -44,6 +44,7 @@ type
   private
     FUpdatingFromDataLink: Boolean;
     FSearching: Boolean;
+    FHandlingExit: Boolean;
     FSearchOnExit: Boolean;
     FLookupOpened: Boolean;
     { Visual }
@@ -316,16 +317,27 @@ end;
 
 procedure TDBLookupEdit.DescEditWndProc(var Msg: TMessage);
 begin
-  FOldDescWndProc(Msg);
-
-  if Msg.Msg = CM_EXIT then
+  { O procedimento original pode movimentar o foco e gerar outro CM_EXIT.
+    A guarda precisa cobrir também essa chamada; ativá-la somente depois
+    deixava uma janela para reentrada recursiva. }
+  if (Msg.Msg = CM_EXIT) and not FHandlingExit then
   begin
-    if not (csDestroying in ComponentState) and
-       not FLookupOpened and
-       FSearchOnExit and
-       (Trim(FDescEdit.Text) <> '') and
-       (not FIsValid) then
-      DoSearch;
+    FHandlingExit := True;
+    try
+      FOldDescWndProc(Msg);
+      if not (csDestroying in ComponentState) and
+         not FLookupOpened and
+         FSearchOnExit and
+         (Trim(FDescEdit.Text) <> '') and
+         (not FIsValid) then
+        DoSearch;
+    finally
+      FHandlingExit := False;
+    end;
+  end
+  else
+  begin
+    FOldDescWndProc(Msg);
   end;
 end;
 
