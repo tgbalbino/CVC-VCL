@@ -776,6 +776,7 @@ end;
 procedure TDBLookupEdit.DoSearch;
 var
   IDCandidate: Integer;
+  SelectedID: Variant;
 begin
    if FSearching then
     Exit;
@@ -802,7 +803,9 @@ begin
 
         if not FQuery.IsEmpty then
         begin
-          SetSelectedID(FQuery.FieldByName(FLookup.ID).Value);
+          SelectedID := FQuery.FieldByName(FLookup.ID).Value;
+          FQuery.Close;
+          SetSelectedID(SelectedID);
           FIsValid := True;
           Exit;
         end;
@@ -812,7 +815,9 @@ begin
 
       if not FQuery.IsEmpty then
       begin
-        SetSelectedID(FQuery.FieldByName(FLookup.ID).Value);
+        SelectedID := FQuery.FieldByName(FLookup.ID).Value;
+        FQuery.Close;
+        SetSelectedID(SelectedID);
         FIsValid := True;
         Exit;
       end;
@@ -824,7 +829,9 @@ begin
 
         if not FQuery.IsEmpty then
         begin
-          SetSelectedID(FQuery.FieldByName(FLookup.ID).Value);
+          SelectedID := FQuery.FieldByName(FLookup.ID).Value;
+          FQuery.Close;
+          SetSelectedID(SelectedID);
           FIsValid := True;
           Exit;
         end;
@@ -861,7 +868,9 @@ begin
     end;
     FQuery.First;
 
-    SetSelectedID(FQuery.FieldByName(FLookup.ID).Value);
+    SelectedID := FQuery.FieldByName(FLookup.ID).Value;
+    FQuery.Close;
+    SetSelectedID(SelectedID);
     FIsValid := True;
   except
     on E: Exception do
