@@ -927,10 +927,28 @@ end;
 
 procedure TDBLookupEdit.EventDoSearchButton(Sender: TObject);
 begin
-  if Assigned(FOnSearchButtonClick) then
-    FOnSearchButtonClick(Self)
-  else
-    DoSearch;
+  if FSearching then
+    Exit;
+
+  { O callback pode abrir uma pesquisa modal usando a mesma conexão do
+    lookup. Feche qualquer cursor interno antes de entregar o controle ao
+    formulário chamador; caso contrário o FireDAC fica esperando a consulta
+    anterior e a janela aparenta travar. A guarda também evita reentrada se o
+    callback devolver o foco ao editor. }
+  FSearching := True;
+  try
+    if FQuery.Active then
+      FQuery.Close;
+    if FLoadQuery.Active then
+      FLoadQuery.Close;
+
+    if Assigned(FOnSearchButtonClick) then
+      FOnSearchButtonClick(Self)
+    else
+      DoSearch;
+  finally
+    FSearching := False;
+  end;
 end;
 
 procedure TDBLookupEdit.ClearSelectedID;
