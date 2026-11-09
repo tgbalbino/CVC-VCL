@@ -45,6 +45,7 @@ type
     FUpdatingFromDataLink: Boolean;
     FSearching: Boolean;
     FHandlingExit: Boolean;
+    FEditTabStop: Boolean;
     FSearchOnExit: Boolean;
     FLookupOpened: Boolean;
     { Visual }
@@ -136,6 +137,7 @@ type
     function BuildSearchWhere(const AWhere: string): string;
     procedure UpdateEnabledAppearance;
     procedure ValidateLookupConfiguration;
+    procedure SetEditTabStop(Value: Boolean);
     procedure ValidateIdentifierList(const AValue, AName: string; AAllowEmpty: Boolean);
   protected
     procedure SetEnabled(Value: Boolean); override;
@@ -174,6 +176,10 @@ type
     property AdvanceFocusOnEnter: Boolean read FAdvanceFocusOnEnter
       write FAdvanceFocusOnEnter default True;
     property SearchOnExit: Boolean read FSearchOnExit write FSearchOnExit default True;
+    { O wrapper (TCustomControl) tem TabStop=False por padrao e nao deve ser
+      parada de Tab; quem recebe o foco e' o editor interno. Esta propriedade
+      decide se ele entra no TAB (False = campo fora da sequencia de TAB). }
+    property EditTabStop: Boolean read FEditTabStop write SetEditTabStop default True;
 
     property OnBeforeSelectRecord: TBeforeSelectRecordEvent read FOnBeforeSelectRecord write FOnBeforeSelectRecord;
     property OnSearchButtonClick: TDBLookupEditSearchButtonClick read FOnSearchButtonClick write FOnSearchButtonClick;
@@ -221,6 +227,7 @@ begin
   FIDWidth := 50;
   FAdvanceFocusOnEnter := True;
   FSearchOnExit := True;
+  FEditTabStop := True;
   FLabelMargin := 4;
   FLabelPosition := lpTop;
 
@@ -258,6 +265,10 @@ begin
   FDescEdit := TEdit.Create(Self);
   FDescEdit.Parent := Self;
   FDescEdit.AutoSize := False;    // permite fixar a altura manualmente
+  // O filho nasce antes de EditTabStop ser carregado do DFM. Mantê-lo fora do
+  // TAB ate o Loaded evita que o VCL tente foca-lo durante a construcao do
+  // modal; Loaded/SetEnabled aplicam o valor definitivo.
+  FDescEdit.TabStop := False;
   FDescEdit.ParentColor := False;
   FDescEdit.StyleElements := [];
   FDescEdit.Ctl3D := False;
@@ -276,6 +287,15 @@ begin
   FSearchButton.Flat := True;
 
   UpdateEnabledAppearance;
+end;
+
+procedure TDBLookupEdit.SetEditTabStop(Value: Boolean);
+begin
+  if FEditTabStop = Value then
+    Exit;
+  FEditTabStop := Value;
+  if Assigned(FDescEdit) and not (csLoading in ComponentState) then
+    FDescEdit.TabStop := FEditTabStop and Enabled;
 end;
 
 procedure TDBLookupEdit.DescEditChange(Sender: TObject);
@@ -1012,6 +1032,11 @@ end;
 procedure TDBLookupEdit.Loaded;
 begin
   inherited;
+  { O TabStop do wrapper e' False por padrao (TCustomControl) e quase nenhum
+    DFM o grava; usa-lo aqui tirava todos os lookups da sequencia de TAB e o
+    Tab pulava o campo seguinte. O editor interno segue EditTabStop. }
+  if Assigned(FDescEdit) then
+    FDescEdit.TabStop := FEditTabStop and Enabled;
   // Recalcula o layout após o Font/ParentFont serem totalmente resolvidos
   // pelo container real (o valor usado em design-time pode diferir do
   // font efetivo em tempo de execução, especialmente com VCL Styles).
@@ -1057,7 +1082,9 @@ begin
   // leitura e sem possibilidade de foco/edição.
   FDescEdit.Enabled := True;
   FDescEdit.ReadOnly := not Enabled;
-  FDescEdit.TabStop := Enabled;
+  // O editor interno segue EditTabStop (nao o TabStop do wrapper, que e' False).
+  // Antes do Loaded fica fora do TAB para nao ser focado na construcao do modal.
+  FDescEdit.TabStop := FEditTabStop and Enabled and not (csLoading in ComponentState);
   FSearchButton.Enabled := Enabled;
 
   AColor := clWindow;
