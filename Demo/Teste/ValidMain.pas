@@ -543,6 +543,28 @@ begin
   Mem.Cancel;
   Pausa(50);
   Check('cancelar limpa a marca (fase 1)', not MarcaVisivel(Numero));
+
+  Escrever('');
+  Escrever('O8 Regressao: Indicar com um dataset NOVO que ja esta ATIVO (stack overflow)');
+  begin
+    var Mem2 := TFDMemTable.Create(Self);
+    var Src2 := TDataSource.Create(Self);
+    Src2.DataSet := Mem2;
+    Mem2.FieldDefs.Add('NOME', ftString, 20, True);
+    Mem2.CreateDataSet;   // ativo ANTES de Indicar, como nas telas reais
+    var Novo := TCVCDBEdit.Create(Self);
+    Novo.Parent := Pnl;
+    Novo.SetBounds(20, 100, 120, 24);
+    Novo.DataSource := Src2;
+    Novo.DataField := 'NOME';
+    TCamposObrigatorios.Indicar(Pnl);   // antes: recursao infinita
+    Pausa(50);
+    Check('sem estouro de pilha e asterisco presente', ContarAsteriscos(Novo) = 1);
+    Mem2.Close;
+    Mem2.CreateDataSet;   // reabrir reavalia sem recursao
+    Pausa(50);
+    Check('reabrir o dataset continua estavel', ContarAsteriscos(Novo) = 1);
+  end;
 end;
 
 end.
