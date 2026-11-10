@@ -327,7 +327,11 @@ begin
   if (Key = VK_RETURN) then
   begin
     Key := 0;
-    DoSearch;
+    { So pesquisa quando o texto foi alterado ou ainda nao ha selecao valida.
+      Voltar ao campo ja resolvido e dar Enter apenas avanca o foco; para
+      pesquisar de novo sem editar, use o botao, o duplo clique ou edite o texto. }
+    if not (FIsValid and (FDescEdit.Text = FLastDescText)) then
+      DoSearch;
     { Campo vazio não exige pesquisa, mas o Enter continua tendo o mesmo
       significado de Tab. Texto inválido permanece no campo para correção. }
     if FIsValid or (Trim(FDescEdit.Text) = '') then
@@ -885,8 +889,11 @@ begin
 
       if Assigned(FOnBeforeSelectRecord) then
         FOnBeforeSelectRecord(Self, FQuery);
-    end;
-    FQuery.First;
+    end
+    else
+      // Resultado unico: FQuery esta no EOF depois do teste acima. Com a grade
+      // aberta, o registro escolhido pelo usuario deve ser mantido.
+      FQuery.First;
 
     SelectedID := FQuery.FieldByName(FLookup.ID).Value;
     FQuery.Close;
