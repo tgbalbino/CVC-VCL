@@ -7,6 +7,10 @@ uses
   Winapi.Messages, Vcl.Controls, Vcl.StdCtrls, Vcl.Buttons, Vcl.Graphics,
   Vcl.Forms, Data.DB, Vcl.DBCtrls, FireDAC.Comp.Client, CVCVisualSettings;
 
+const
+  // Mensagem propria: avanca o foco depois que a pesquisa do Enter termina.
+  WM_LOOKUP_ADVANCE = WM_APP + 311;
+
 type
   TLabelPosition = (lpTop, lpLeft);
 
@@ -133,6 +137,7 @@ type
     procedure DescEditChange(Sender: TObject);
     procedure DescEditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure AdvanceFocusAfterEnter;
+    procedure WMLookupAdvance(var Message: TMessage); message WM_LOOKUP_ADVANCE;
     procedure ClearSelectedID;
     function BuildSearchWhere(const AWhere: string): string;
     procedure UpdateEnabledAppearance;
@@ -205,6 +210,10 @@ implementation
 
 uses
   uLookupForm;
+
+type
+  // SelectNext e protegido em TWinControl.
+  TWinControlAcesso = class(TWinControl);
 
 { TDBLookupEdit }
 
@@ -309,16 +318,33 @@ begin
 end;
 
 procedure TDBLookupEdit.AdvanceFocusAfterEnter;
-var
-  Form: TCustomForm;
 begin
   if not FAdvanceFocusOnEnter or
      ((not FIsValid) and (Trim(FDescEdit.Text) <> '')) then
     Exit;
 
+  if HandleAllocated then
+    PostMessage(Handle, WM_LOOKUP_ADVANCE, 0, 0);
+end;
+
+procedure TDBLookupEdit.WMLookupAdvance(var Message: TMessage);
+var
+  Form: TCustomForm;
+  Origem: TWinControl;
+begin
+  if csDestroying in ComponentState then
+    Exit;
   Form := GetParentForm(Self);
-  if Assigned(Form) then
-    PostMessage(Form.Handle, WM_NEXTDLGCTL, 0, 0);
+  if not Assigned(Form) then
+    Exit;
+  { WM_NEXTDLGCTL parte de Form.ActiveControl, que fica vazio em formulario
+    embutido em aba (ou depois de uma janela modal) e levava o foco ao primeiro
+    controle da tela. Avanca a partir do controle que tem o foco real; se o
+    aplicativo moveu o foco no OnAfterSelect, respeita o novo ponto. }
+  Origem := Screen.ActiveControl;
+  if (Origem = nil) or not Form.ContainsControl(Origem) then
+    Origem := FDescEdit;
+  TWinControlAcesso(Form).SelectNext(Origem, True, True);
 end;
 
 procedure TDBLookupEdit.DescEditKeyDown(Sender: TObject; var Key: Word;

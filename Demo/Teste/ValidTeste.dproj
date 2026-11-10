@@ -1,0 +1,55 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ProjectGuid>{B4E2A6F8-4F84-4D4F-A9A7-VALIDTEST0001}</ProjectGuid>
+    <MainSource>ValidTeste.dpr</MainSource>
+    <Config Condition="'$(Config)'==''">Debug</Config>
+    <Platform Condition="'$(Platform)'==''">Win32</Platform>
+    <TargetedPlatforms>1</TargetedPlatforms>
+    <AppType>Application</AppType>
+    <FrameworkType>VCL</FrameworkType>
+    <ProjectVersion>18.8</ProjectVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Config)'=='Base' or '$(Config)'=='Debug' or '$(Config)'=='Release'">
+    <Base>true</Base>
+    <DCC_Namespace>Winapi;System.Win;Data.Win;Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
+    <DCC_UnitSearchPath>C:\DelphiComponents\StyledComponents\source;C:\Dev\controlevendas_git;C:\DelphiComponents\jcl-master\jcl\lib\d26\win32;C:\DelphiComponents\jcl-master\jcl\source\include;C:\DelphiComponents\jcl-master\jcl\source\common;C:\DelphiComponents\jcl-master\jcl\source\windows;C:\DelphiComponents\jcl-master\jcl\source\vcl;..\..\Source\CVCDBEdit;C:\DelphiComponents\jvcl-master\jvcl\common;C:\DelphiComponents\jvcl-master\jvcl\run;C:\DelphiComponents\jvcl-master\jvcl\lib\d26\win32;..\Source;..\Source\DBLookupEdit;..\Source\CVCDateEdit;C:\Program Files (x86)\Embarcadero\Studio\20.0\lib\win32\release;C:\Program Files (x86)\Embarcadero\Studio\20.0\lib\win32\debug;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+    <DCC_ExeOutput>$(MSBuildProjectDirectory)\Win32\$(Config)</DCC_ExeOutput>
+    <DCC_DcuOutput>$(MSBuildProjectDirectory)\Win32\$(Config)\dcu</DCC_DcuOutput>
+    <DCC_ResourcePath>C:\DelphiComponents\jvcl-master\jvcl\resources;$(DCC_ResourcePath)</DCC_ResourcePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Config)'=='Debug'">
+    <Cfg_1>true</Cfg_1><CfgParent>Base</CfgParent><Base>true</Base>
+    <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
+    <DCC_DebugInformation>2</DCC_DebugInformation>
+    <DCC_Optimize>false</DCC_Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Config)'=='Release'">
+    <Cfg_2>true</Cfg_2><CfgParent>Base</CfgParent><Base>true</Base>
+    <DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
+    <DCC_DebugInformation>0</DCC_DebugInformation>
+    <DCC_Optimize>true</DCC_Optimize>
+  </PropertyGroup>
+  <ItemGroup>
+    <DelphiCompile Include="$(MainSource)"><MainSource>MainSource</MainSource></DelphiCompile>
+    <DCCReference Include="rtl.dcp"/>
+    <DCCReference Include="vcl.dcp"/>
+    <DCCReference Include="vcldb.dcp"/>
+    <DCCReference Include="FireDAC.dcp"/>
+    <DCCReference Include="FireDACCommon.dcp"/>
+    <DCCReference Include="FireDACCommonDriver.dcp"/>
+    <DCCReference Include="FireDAC.Phys.FB.dcp"/>
+    <DCCReference Include="FireDAC.Phys.FBDef.dcp"/>
+    <DCCReference Include="..\Source\CVCVisualSettings.pas"/>
+    <DCCReference Include="..\Source\DBLookupEdit\DBLookupEdit.pas"/>
+    <DCCReference Include="..\Source\DBLookupEdit\uLookupForm.pas"><Form>frmLookup</Form></DCCReference>
+    <BuildConfiguration Include="Base"><Key>Base</Key></BuildConfiguration>
+    <BuildConfiguration Include="Debug"><Key>Debug</Key><CfgParent>Base</CfgParent></BuildConfiguration>
+    <BuildConfiguration Include="Release"><Key>Release</Key><CfgParent>Base</CfgParent></BuildConfiguration>
+  </ItemGroup>
+  <ProjectExtensions>
+    <Borland.Personality>Delphi.Personality.12</Borland.Personality>
+    <Borland.ProjectType>Application</Borland.ProjectType>
+    <ProjectFileVersion>12</ProjectFileVersion>
+  </ProjectExtensions>
+  <Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>
+</Project>
