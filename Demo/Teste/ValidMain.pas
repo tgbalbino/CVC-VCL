@@ -480,7 +480,10 @@ begin
   Livre.Text := '';
   Livre.Enabled := False;
   Check('desabilitado nao entra', Erros = 1);
+  Check('asterisco some com o campo desabilitado', ContarAsteriscos(Livre) = 0);
   Livre.Enabled := True;
+  Pausa(30);
+  Check('asterisco volta ao habilitar', ContarAsteriscos(Livre) = 1);
   Livre.Parent.Visible := True;
   Numero.Text := '';
   Check('3 de novo', Erros = 3);
@@ -564,6 +567,42 @@ begin
     Mem2.CreateDataSet;   // reabrir reavalia sem recursao
     Pausa(50);
     Check('reabrir o dataset continua estavel', ContarAsteriscos(Novo) = 1);
+  end;
+
+  Escrever('');
+  Escrever('O9 Regressao: varias campos obrigatorios intercalados com rotulos (desenhar o * mexe na lista do pai)');
+  begin
+    var Mem3 := TFDMemTable.Create(Self);
+    var Src3 := TDataSource.Create(Self);
+    Src3.DataSet := Mem3;
+    var Pnl3 := TPanel.Create(Self);
+    Pnl3.Parent := Self;
+    Pnl3.SetBounds(0, 0, 600, 200);
+    var Edits: TArray<TCVCDBEdit>;
+    var K: Integer;
+    SetLength(Edits, 8);
+    for K := 0 to 7 do
+      Mem3.FieldDefs.Add('C' + IntToStr(K), ftString, 10, True);
+    Mem3.CreateDataSet;
+    for K := 0 to 7 do
+    begin
+      var Rot := TLabel.Create(Self);       // controle sem janela entre os campos
+      Rot.Parent := Pnl3;
+      Rot.Caption := 'Campo ' + IntToStr(K);
+      Rot.SetBounds(5, 5 + K * 22, 50, 14);
+      Edits[K] := TCVCDBEdit.Create(Self);
+      Edits[K].Parent := Pnl3;
+      Edits[K].SetBounds(60 + (K mod 2) * 250, 5 + K * 22, 100, 20);
+      Edits[K].DataSource := Src3;
+      Edits[K].DataField := 'C' + IntToStr(K);
+    end;
+    TCamposObrigatorios.Indicar(Pnl3);
+    Pausa(50);
+    var Faltam := 0;
+    for K := 0 to 7 do
+      if ContarAsteriscos(Edits[K]) <> 1 then
+        Inc(Faltam);
+    Check('todos os 8 campos obrigatorios receberam asterisco (faltaram ' + IntToStr(Faltam) + ')', Faltam = 0);
   end;
 end;
 
