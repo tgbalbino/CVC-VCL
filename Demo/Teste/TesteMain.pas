@@ -81,6 +81,7 @@ type
     procedure T16_VendedorInativo;
     procedure T17_SaidaDoCampo;
     procedure T18_SegundaTabela;
+    procedure T19_AlturaAutomatica;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -745,6 +746,83 @@ begin
     (FGradeCount = 1) and FCli.IsValid or (not FCli.IsValid) and (IdStr(FCli) = ''));
 end;
 
+procedure TfrmTeste.T19_AlturaAutomatica;
+var
+  L: TDBLookupEdit;
+  Painel: TPanel;
+  Pos: TLabelPosition;
+  Tam: Integer;
+  Nome: string;
+
+  function FolgaBaixo: Integer;
+  var
+    I, Maior: Integer;
+  begin
+    Maior := 0;
+    for I := 0 to L.ControlCount - 1 do
+      if L.Controls[I].Visible and (L.Controls[I].Height > 0) and
+         (L.Controls[I].Top + L.Controls[I].Height > Maior) then
+        Maior := L.Controls[I].Top + L.Controls[I].Height;
+    Result := L.Height - Maior;
+  end;
+
+  function FolgaCima: Integer;
+  var
+    I, Menor: Integer;
+  begin
+    Menor := MaxInt;
+    for I := 0 to L.ControlCount - 1 do
+      if L.Controls[I].Visible and (L.Controls[I].Height > 0) and
+         (L.Controls[I].Top < Menor) then
+        Menor := L.Controls[I].Top;
+    Result := Menor;
+  end;
+
+begin
+  Titulo('T19 - Altura automatica acompanha o conteudo');
+  Painel := TPanel.Create(Self);
+  Painel.Parent := Self;
+  Painel.SetBounds(0, 0, 400, 200);
+  Painel.BevelOuter := bvNone;
+  Painel.Visible := False;
+  try
+    L := TDBLookupEdit.Create(Self);
+    L.Parent := Painel;
+    L.Width := 300;
+    for Pos := lpTop to lpLeft do
+      for Tam := 8 to 20 do
+      begin
+        Nome := Format('pos=%d fonte=%d', [Ord(Pos), Tam]);
+        L.LabelCaption := 'Fornecedor';
+        L.LabelPosition := Pos;
+        L.Font.Size := Tam;
+        L.Height := 5; // tentativa de forcar altura menor que o conteudo
+        Check(Nome + ': borda de baixo com folga', FolgaBaixo >= 1,
+          Format('folga=%d Height=%d', [FolgaBaixo, L.Height]));
+        Check(Nome + ': folga em cima', FolgaCima >= 1,
+          Format('folga=%d', [FolgaCima]));
+      end;
+    // sem rotulo
+    L.LabelCaption := '';
+    L.Height := 100;
+    Check('sem rotulo: altura = conteudo (folga igual em cima e embaixo)',
+      FolgaBaixo = FolgaCima, Format('baixo=%d cima=%d', [FolgaBaixo, FolgaCima]));
+    // AutoHeight desligado respeita a altura escolhida
+    L.AutoHeight := False;
+    L.Height := 100;
+    Check('AutoHeight=False respeita Height', L.Height = 100, IntToStr(L.Height));
+    L.AutoHeight := True;
+    Check('AutoHeight=True volta ao conteudo', L.Height < 100, IntToStr(L.Height));
+    // Align alClient nao e forcado
+    L.Align := alClient;
+    Painel.Realign;
+    Check('alClient nao forca altura', L.Height = Painel.ClientHeight,
+      Format('%d x %d', [L.Height, Painel.ClientHeight]));
+  finally
+    Painel.Free;
+  end;
+end;
+
 procedure TfrmTeste.T18_SegundaTabela;
 begin
   Titulo('T18 Segunda tabela (PRODUTO)');
@@ -777,6 +855,22 @@ begin
   if Senha = '' then
     Senha := 'masterkey';
   FConn.Params.Clear;
+  if FindCmdLineSwitch('altura') then
+  begin
+    // so a altura automatica: nao precisa de banco
+    try
+      T19_AlturaAutomatica;
+    except
+      on E: Exception do
+      begin
+        Inc(FFalhas);
+        Escrever('EXCECAO: ' + E.ClassName + ': ' + E.Message);
+      end;
+    end;
+    Escrever(Format('Resultado: %d verificacoes, %d falha(s)', [FTotal, FFalhas]));
+    FLog.SaveToFile(ChangeFileExt(ParamStr(0), '.txt'));
+    Exit;
+  end;
   FConn.Params.Values['DriverID'] := 'FB';
   FConn.Params.Values['Protocol'] := 'TCPIP';
   FConn.Params.Values['Server'] := 'localhost';
@@ -815,6 +909,7 @@ begin
     T16_VendedorInativo;
     T17_SaidaDoCampo;
     T18_SegundaTabela;
+    T19_AlturaAutomatica;
   except
     on E: Exception do
     begin
