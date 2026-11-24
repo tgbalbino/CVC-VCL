@@ -830,7 +830,7 @@ var
   Painel: TPanel;
   Marca, Rotulo: TLabel;
   Pos: TLabelPosition;
-  I, FimTexto: Integer;
+  I, FimTexto, IdEsq: Integer;
   Nome: string;
 
   function AcharMarca: TLabel;
@@ -886,27 +886,34 @@ begin
     if Marca = nil then
       Exit;
     Check('Required=False: asterisco oculto', not Marca.Visible);
-    for Pos := lpTop to lpLeft do
-      for I := 0 to 1 do
-      begin
-        Nome := Format('pos=%d fonte=%d', [Ord(Pos), 8 + I * 8]);
-        L.LabelPosition := Pos;
-        L.Font.Size := 8 + I * 8;
-        L.Required := True;
-        Rotulo := AcharRotulo;
-        Self.Canvas.Font.Assign(Rotulo.Font);
-        FimTexto := Self.Canvas.TextWidth('Fornecedor');
-        Check(Nome + ': visivel', Marca.Visible);
-        Check(Nome + ': colado ao fim da legenda',
-          (Marca.Left >= Rotulo.Left + FimTexto) and
-          (Marca.Left <= Rotulo.Left + FimTexto + 6),
-          Format('marca=%d fimTexto=%d', [Marca.Left,
-            Rotulo.Left + FimTexto]));
-        Check(Nome + ': nao cobre o campo', not SobrepoeCampo(Marca));
-        Check(Nome + ': dentro do componente',
-          (Marca.Left + Marca.Width <= L.Width) and (Marca.Top + Marca.Height <= L.Height));
-        Check(Nome + ': vermelho', Marca.Font.Color = clRed);
-      end;
+    for I := 0 to 1 do
+    begin
+      Nome := Format('lpTop fonte=%d', [8 + I * 8]);
+      L.LabelPosition := lpTop;
+      L.Font.Size := 8 + I * 8;
+      L.Required := True;
+      Rotulo := AcharRotulo;
+      Self.Canvas.Font.Assign(Rotulo.Font);
+      FimTexto := Self.Canvas.TextWidth('Fornecedor');
+      Check(Nome + ': visivel', Marca.Visible);
+      Check(Nome + ': colado ao fim da legenda',
+        (Marca.Left >= Rotulo.Left + FimTexto) and
+        (Marca.Left <= Rotulo.Left + FimTexto + 6),
+        Format('marca=%d fimTexto=%d', [Marca.Left, Rotulo.Left + FimTexto]));
+      Check(Nome + ': nao cobre o campo', not SobrepoeCampo(Marca));
+      Check(Nome + ': dentro do componente',
+        (Marca.Left + Marca.Width <= L.Width) and (Marca.Top + Marca.Height <= L.Height));
+      Check(Nome + ': vermelho', Marca.Font.Color = clRed);
+    end;
+    // legenda a esquerda: nada desenhado e o campo NAO se desloca
+    L.LabelPosition := lpLeft;
+    L.Required := False;
+    IdEsq := Inner(L).Left;
+    L.Required := True;
+    Check('lpLeft: sem asterisco interno', not Marca.Visible);
+    Check('lpLeft: Required nao desloca o campo', Inner(L).Left = IdEsq,
+      Format('%d x %d', [Inner(L).Left, IdEsq]));
+    L.LabelPosition := lpTop;
     L.Enabled := False;
     Check('desabilitado: asterisco oculto', not Marca.Visible);
     L.Enabled := True;

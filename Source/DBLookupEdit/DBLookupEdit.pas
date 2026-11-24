@@ -208,8 +208,10 @@ type
       (fonte do editor, rotulo e margem), como o AutoSize do TEdit. Ignorada
       se Align for alLeft/alRight/alClient ou Anchors tiver akTop e akBottom. }
     property AutoHeight: Boolean read FAutoHeight write SetAutoHeight default True;
-    { Campo obrigatorio: desenha um "*" vermelho logo apos a legenda (so
-      aparece com LabelCaption preenchida e o componente habilitado). }
+    { Campo obrigatorio: desenha um "*" vermelho logo apos a legenda quando
+      ela fica EM CIMA (lpTop), com LabelCaption preenchida e o componente
+      habilitado. Com a legenda a esquerda (lpLeft) nada e' desenhado nem
+      deslocado: o "*" fica por conta da tela (uObrigatorios). }
     property Required: Boolean read FRequired write SetRequired default False;
     property Anchors;
     property Enabled;
@@ -1274,7 +1276,7 @@ begin
 
     // "*" de obrigatorio logo apos o texto da legenda
     MarkW := 0;
-    if FRequired then
+    if FRequired and (FLabelPosition = lpTop) then
     begin
       FReqMark.Font.Assign(FLabel.Font);
       FReqMark.Font.Color := clRed;
@@ -1292,16 +1294,17 @@ begin
     end
     else // lpLeft
     begin
+      // Legenda a esquerda: o campo nao se desloca (continua alinhado com os
+      // demais campos da tela); o "*" e' desenhado pela tela, antes da legenda.
       FLabel.SetBounds(Padding, TopOffset, LabelW, EditH);
-      if FRequired then
-        FReqMark.SetBounds(Padding + LabelW + 2, TopOffset, MarkW, EditH);
-      LeftOffset := LabelW + MarkW + FLabelMargin;
+      LeftOffset := LabelW + FLabelMargin;
     end;
   end
   else
     FLabel.SetBounds(0, 0, 0, 0);
 
-  FReqMark.Visible := FRequired and (FLabelCaption <> '') and Enabled;
+  FReqMark.Visible := FRequired and (FLabelCaption <> '') and Enabled and
+    (FLabelPosition = lpTop);
   if FReqMark.Visible then
     FReqMark.BringToFront;
 
