@@ -80,6 +80,7 @@ type
     FShowSearchButton: Boolean;
     FIDWidth: Integer;
     FAdvanceFocusOnEnter: Boolean;
+    FAutoHeight: Boolean;
 
     { Events }
     FOnBeforeSelectRecord: TBeforeSelectRecordEvent;
@@ -92,6 +93,12 @@ type
 
     { Internal helpers }
     procedure ResizeControls;
+    function PadV: Integer;
+    function EditHeightNeeded: Integer;
+    function LabelHeightNeeded: Integer;
+    function HeightNeeded: Integer;
+    function CanAutoHeight: Boolean;
+    procedure SetAutoHeight(const Value: Boolean);
     function BuildBaseSelect(const AFields, AWhere: string): string;
     procedure PrepareQuery(AQuery: TFDQuery; const ASql: string);
     procedure PrepareQueryByText(AQuery: TFDQuery);
@@ -147,6 +154,7 @@ type
   protected
     procedure SetEnabled(Value: Boolean); override;
     procedure Resize; override;
+    procedure ChangeScale(M, D: Integer; isDpiChange: Boolean); override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure Loaded; override;
 
@@ -154,6 +162,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
+    procedure SetBounds(ALeft, ATop, AWidth, AHeight: Integer); override;
     procedure Clear;
     procedure LoadByID(const AID: Variant);
 
@@ -192,6 +201,10 @@ type
     property OnLookupError: TDBLookupEditErrorEvent read FOnLookupError write FOnLookupError;
 
     property Align;
+    { Quando True (padrao), a altura do componente acompanha o conteudo
+      (fonte do editor, rotulo e margem), como o AutoSize do TEdit. Ignorada
+      se Align for alLeft/alRight/alClient ou Anchors tiver akTop e akBottom. }
+    property AutoHeight: Boolean read FAutoHeight write SetAutoHeight default True;
     property Anchors;
     property Enabled;
     property Font;
@@ -230,6 +243,7 @@ begin
   Width := 300;
   Height := 48;
 
+  FAutoHeight := True;
   FIsValid := False;
   FSelectedIDValue := Null;
   FShowSearchButton := True;
@@ -253,6 +267,8 @@ begin
   FLabel := TLabel.Create(Self);
   FLabel.Parent := Self;
   FLabel.Transparent := True;
+  FLabel.AutoSize := False;       // altura/posicao definidas em ResizeControls
+  FLabel.Layout := tlCenter;      // texto centralizado na faixa do edit
 
   FLabelFont := TFont.Create;
   FLabelFont.Assign(FLabel.Font);
@@ -1143,6 +1159,62 @@ begin
   FSearchButton.Font.Color := AFontColor;
 end;
 
+function TDBLookupEdit.PadV: Integer;
+begin
+  // folga vertical (em 96 DPI) para a borda nao encostar no limite do componente
+  Result := MulDiv(2, CurrentPPI, 96);
+end;
+
+function TDBLookupEdit.EditHeightNeeded: Integer;
+begin
+  Canvas.Font.Assign(FIDEdit.Font);
+  Result := Canvas.TextHeight('Ág') + 8;
+end;
+
+function TDBLookupEdit.LabelHeightNeeded: Integer;
+begin
+  if FLabelCaption = '' then
+    Exit(0);
+  Canvas.Font.Assign(FLabel.Font);
+  Result := Canvas.TextHeight(FLabelCaption) + 4;
+end;
+
+function TDBLookupEdit.HeightNeeded: Integer;
+begin
+  Result := PadV + EditHeightNeeded + PadV;
+  if (FLabelCaption <> '') and (FLabelPosition = lpTop) then
+    Inc(Result, LabelHeightNeeded + FLabelMargin);
+end;
+
+function TDBLookupEdit.CanAutoHeight: Boolean;
+begin
+  Result := FAutoHeight and Assigned(FIDEdit) and Assigned(FLabel) and
+    not (csLoading in ComponentState) and
+    not (Align in [alLeft, alRight, alClient]) and
+    not ((akTop in Anchors) and (akBottom in Anchors));
+end;
+
+procedure TDBLookupEdit.SetAutoHeight(const Value: Boolean);
+begin
+  if FAutoHeight = Value then
+    Exit;
+  FAutoHeight := Value;
+  ResizeControls;
+end;
+
+procedure TDBLookupEdit.SetBounds(ALeft, ATop, AWidth, AHeight: Integer);
+begin
+  if CanAutoHeight then
+    AHeight := HeightNeeded;
+  inherited SetBounds(ALeft, ATop, AWidth, AHeight);
+end;
+
+procedure TDBLookupEdit.ChangeScale(M, D: Integer; isDpiChange: Boolean);
+begin
+  inherited;
+  ResizeControls;
+end;
+
 procedure TDBLookupEdit.ResizeControls;
 var
   Padding, BtnWidth: Integer;
@@ -1151,13 +1223,20 @@ var
   EditH: Integer;
   ExtraWidth: Integer;
 begin
+  if not Assigned(FIDEdit) or not Assigned(FDescEdit) or
+     not Assigned(FLabel) or not Assigned(FSearchButton) then
+    Exit;
+
   Padding := 4;
   BtnWidth := 25;
 
-  Canvas.Font.Assign(FIDEdit.Font);
-  EditH := Canvas.TextHeight('Ág') + 8;
+  // Ajusta a propria altura ao conteudo (dispara Resize apenas se mudar)
+  if CanAutoHeight and (Height <> HeightNeeded) then
+    SetBounds(Left, Top, Width, Height);
 
-  TopOffset := 0;
+  EditH := EditHeightNeeded;
+
+  TopOffset := PadV;
   LeftOffset := 0;
   ExtraWidth := 0;
 
@@ -1168,16 +1247,16 @@ begin
     // Sem folga extra: o espaçamento até o edit é controlado só por FLabelMargin,
     // então com FLabelMargin = 0 a label fica colada no edit.
     LabelW := Canvas.TextWidth(FLabelCaption);
-    LabelH := Canvas.TextHeight(FLabelCaption) + 4;
+    LabelH := LabelHeightNeeded;
 
     if FLabelPosition = lpTop then
     begin
-      FLabel.SetBounds(Padding, 0, Width - Padding * 2, LabelH);
-      TopOffset := LabelH + FLabelMargin;
+      FLabel.SetBounds(Padding, TopOffset, Width - Padding * 2, LabelH);
+      TopOffset := TopOffset + LabelH + FLabelMargin;
     end
     else // lpLeft
     begin
-      FLabel.SetBounds(Padding, Padding, LabelW, EditH);
+      FLabel.SetBounds(Padding, TopOffset, LabelW, EditH);
       LeftOffset := LabelW + FLabelMargin;
     end;
   end
