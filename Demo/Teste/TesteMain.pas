@@ -82,6 +82,7 @@ type
     procedure T17_SaidaDoCampo;
     procedure T18_SegundaTabela;
     procedure T19_AlturaAutomatica;
+    procedure T20_AsteriscoObrigatorio;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -823,6 +824,103 @@ begin
   end;
 end;
 
+procedure TfrmTeste.T20_AsteriscoObrigatorio;
+var
+  L: TDBLookupEdit;
+  Painel: TPanel;
+  Marca, Rotulo: TLabel;
+  Pos: TLabelPosition;
+  I, FimTexto: Integer;
+  Nome: string;
+
+  function AcharMarca: TLabel;
+  var
+    K: Integer;
+  begin
+    Result := nil;
+    for K := 0 to L.ControlCount - 1 do
+      if (L.Controls[K] is TLabel) and (TLabel(L.Controls[K]).Caption = '*') then
+        Exit(TLabel(L.Controls[K]));
+  end;
+
+  function AcharRotulo: TLabel;
+  var
+    K: Integer;
+  begin
+    Result := nil;
+    for K := 0 to L.ControlCount - 1 do
+      if (L.Controls[K] is TLabel) and (TLabel(L.Controls[K]).Caption <> '*') then
+        Exit(TLabel(L.Controls[K]));
+  end;
+
+  function SobrepoeCampo(M: TLabel): Boolean;
+  var
+    K: Integer;
+    C: TControl;
+    R: TRect;
+  begin
+    Result := False;
+    for K := 0 to L.ControlCount - 1 do
+    begin
+      C := L.Controls[K];
+      if (C = M) or (C is TLabel) or not C.Visible or (C.Width = 0) then
+        Continue;
+      if IntersectRect(R, M.BoundsRect, C.BoundsRect) then
+        Exit(True);
+    end;
+  end;
+
+begin
+  Titulo('T20 - Asterisco de obrigatorio junto da legenda');
+  Painel := TPanel.Create(Self);
+  Painel.Parent := Self;
+  Painel.SetBounds(0, 0, 400, 200);
+  Painel.Visible := False;
+  try
+    L := TDBLookupEdit.Create(Self);
+    L.Parent := Painel;
+    L.Width := 300;
+    L.LabelCaption := 'Fornecedor';
+    Marca := AcharMarca;
+    Check('existe o rotulo do asterisco', Marca <> nil);
+    if Marca = nil then
+      Exit;
+    Check('Required=False: asterisco oculto', not Marca.Visible);
+    for Pos := lpTop to lpLeft do
+      for I := 0 to 1 do
+      begin
+        Nome := Format('pos=%d fonte=%d', [Ord(Pos), 8 + I * 8]);
+        L.LabelPosition := Pos;
+        L.Font.Size := 8 + I * 8;
+        L.Required := True;
+        Rotulo := AcharRotulo;
+        Self.Canvas.Font.Assign(Rotulo.Font);
+        FimTexto := Self.Canvas.TextWidth('Fornecedor');
+        Check(Nome + ': visivel', Marca.Visible);
+        Check(Nome + ': colado ao fim da legenda',
+          (Marca.Left >= Rotulo.Left + FimTexto) and
+          (Marca.Left <= Rotulo.Left + FimTexto + 6),
+          Format('marca=%d fimTexto=%d', [Marca.Left,
+            Rotulo.Left + FimTexto]));
+        Check(Nome + ': nao cobre o campo', not SobrepoeCampo(Marca));
+        Check(Nome + ': dentro do componente',
+          (Marca.Left + Marca.Width <= L.Width) and (Marca.Top + Marca.Height <= L.Height));
+        Check(Nome + ': vermelho', Marca.Font.Color = clRed);
+      end;
+    L.Enabled := False;
+    Check('desabilitado: asterisco oculto', not Marca.Visible);
+    L.Enabled := True;
+    Check('habilitado: asterisco volta', Marca.Visible);
+    L.LabelCaption := '';
+    Check('sem legenda: asterisco oculto', not Marca.Visible);
+    L.LabelCaption := 'Fornecedor';
+    L.Required := False;
+    Check('Required=False: oculta de novo', not Marca.Visible);
+  finally
+    Painel.Free;
+  end;
+end;
+
 procedure TfrmTeste.T18_SegundaTabela;
 begin
   Titulo('T18 Segunda tabela (PRODUTO)');
@@ -860,6 +958,7 @@ begin
     // so a altura automatica: nao precisa de banco
     try
       T19_AlturaAutomatica;
+      T20_AsteriscoObrigatorio;
     except
       on E: Exception do
       begin
@@ -910,6 +1009,7 @@ begin
     T17_SaidaDoCampo;
     T18_SegundaTabela;
     T19_AlturaAutomatica;
+    T20_AsteriscoObrigatorio;
   except
     on E: Exception do
     begin
