@@ -81,6 +81,8 @@ type
     FIDWidth: Integer;
     FAdvanceFocusOnEnter: Boolean;
     FAutoHeight: Boolean;
+    FRequired: Boolean;
+    FReqMark: TLabel;
 
     { Events }
     FOnBeforeSelectRecord: TBeforeSelectRecordEvent;
@@ -99,6 +101,7 @@ type
     function HeightNeeded: Integer;
     function CanAutoHeight: Boolean;
     procedure SetAutoHeight(const Value: Boolean);
+    procedure SetRequired(const Value: Boolean);
     function BuildBaseSelect(const AFields, AWhere: string): string;
     procedure PrepareQuery(AQuery: TFDQuery; const ASql: string);
     procedure PrepareQueryByText(AQuery: TFDQuery);
@@ -205,6 +208,9 @@ type
       (fonte do editor, rotulo e margem), como o AutoSize do TEdit. Ignorada
       se Align for alLeft/alRight/alClient ou Anchors tiver akTop e akBottom. }
     property AutoHeight: Boolean read FAutoHeight write SetAutoHeight default True;
+    { Campo obrigatorio: desenha um "*" vermelho logo apos a legenda (so
+      aparece com LabelCaption preenchida e o componente habilitado). }
+    property Required: Boolean read FRequired write SetRequired default False;
     property Anchors;
     property Enabled;
     property Font;
@@ -269,6 +275,14 @@ begin
   FLabel.Transparent := True;
   FLabel.AutoSize := False;       // altura/posicao definidas em ResizeControls
   FLabel.Layout := tlCenter;      // texto centralizado na faixa do edit
+
+  FReqMark := TLabel.Create(Self);
+  FReqMark.Parent := Self;
+  FReqMark.Caption := '*';
+  FReqMark.Transparent := True;
+  FReqMark.AutoSize := False;
+  FReqMark.Layout := tlCenter;
+  FReqMark.Visible := False;
 
   FLabelFont := TFont.Create;
   FLabelFont.Assign(FLabel.Font);
@@ -1103,6 +1117,7 @@ procedure TDBLookupEdit.CMEnabledChanged(var Message: TMessage);
 begin
   inherited;
   UpdateEnabledAppearance;
+  ResizeControls;
 end;
 
 procedure TDBLookupEdit.SetEnabled(Value: Boolean);
@@ -1202,6 +1217,14 @@ begin
   ResizeControls;
 end;
 
+procedure TDBLookupEdit.SetRequired(const Value: Boolean);
+begin
+  if FRequired = Value then
+    Exit;
+  FRequired := Value;
+  ResizeControls;
+end;
+
 procedure TDBLookupEdit.SetBounds(ALeft, ATop, AWidth, AHeight: Integer);
 begin
   if CanAutoHeight then
@@ -1219,7 +1242,7 @@ procedure TDBLookupEdit.ResizeControls;
 var
   Padding, BtnWidth: Integer;
   TopOffset, LeftOffset: Integer;
-  LabelW, LabelH: Integer;
+  LabelW, LabelH, MarkW: Integer;
   EditH: Integer;
   ExtraWidth: Integer;
 begin
@@ -1249,19 +1272,38 @@ begin
     LabelW := Canvas.TextWidth(FLabelCaption);
     LabelH := LabelHeightNeeded;
 
+    // "*" de obrigatorio logo apos o texto da legenda
+    MarkW := 0;
+    if FRequired then
+    begin
+      FReqMark.Font.Assign(FLabel.Font);
+      FReqMark.Font.Color := clRed;
+      FReqMark.Font.Style := [fsBold];
+      Canvas.Font.Assign(FReqMark.Font);
+      MarkW := Canvas.TextWidth('*') + 2;
+    end;
+
     if FLabelPosition = lpTop then
     begin
       FLabel.SetBounds(Padding, TopOffset, Width - Padding * 2, LabelH);
+      if FRequired then
+        FReqMark.SetBounds(Padding + LabelW + 2, TopOffset, MarkW, LabelH);
       TopOffset := TopOffset + LabelH + FLabelMargin;
     end
     else // lpLeft
     begin
       FLabel.SetBounds(Padding, TopOffset, LabelW, EditH);
-      LeftOffset := LabelW + FLabelMargin;
+      if FRequired then
+        FReqMark.SetBounds(Padding + LabelW + 2, TopOffset, MarkW, EditH);
+      LeftOffset := LabelW + MarkW + FLabelMargin;
     end;
   end
   else
     FLabel.SetBounds(0, 0, 0, 0);
+
+  FReqMark.Visible := FRequired and (FLabelCaption <> '') and Enabled;
+  if FReqMark.Visible then
+    FReqMark.BringToFront;
 
   { --- BOTÃO --- }
   if FShowSearchButton then
